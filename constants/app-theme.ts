@@ -1,0 +1,35 @@
+export const AppTheme = {
+  colors: {
+    background: '#0D1117',
+    surfacePrimary: '#161B22',
+    surfaceSecondary: '#1C2128',
+    surfaceTertiary: '#242B35',
+    borderSubtle: '#2F3A47',
+    borderStrong: '#3C4A5C',
+    textPrimary: '#E6EDF3',
+    textSecondary: '#9BA8B6',
+    textMuted: '#7D8996',
+    accent: '#EAB308',
+    success: '#22C55E',
+    warning: '#F59E0B',
+  },
+  spacing: {
+    xxs: 4,
+    xs: 8,
+    sm: 12,
+    md: 16,
+    lg: 20,
+    xl: 24,
+    xxl: 32,
+  },
+  radius: {
+    none: 0,
+    sm: 2,
+    md: 4,
+  },
+  typography: {
+    headingFamily: "'Avenir Next Condensed', 'Trebuchet MS', sans-serif",
+    bodyFamily: "'Avenir Next', 'Segoe UI', sans-serif",
+    monoFamily: "'SFMono-Regular', Menlo, monospace",
+  },
+} as const;

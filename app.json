@@ -4,6 +4,7 @@
     "slug": "judge-me-now",
     "version": "1.0.0",
     "orientation": "portrait",
+    "jsEngine": "hermes",
     "icon": "./assets/images/icon.png",
     "scheme": "judgemenow",
     "userInterfaceStyle": "automatic",
