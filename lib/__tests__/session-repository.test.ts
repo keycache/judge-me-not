@@ -93,6 +93,30 @@ describe('session repository', () => {
     expect(audioFiles).toEqual(['file:///sessions/audio-a1.m4a']);
   });
 
+  it('persists prompt snapshot exactly as saved for session consistency', async () => {
+    const session = createSessionFromQuestionList({
+      sessionNameFromModel: 'Prompt Snapshot Session',
+      questionList: buildQuestionList(),
+      promptSnapshot: {
+        modelVariant: 'gpt-4.1-mini',
+        evaluationStrictness: 'strict',
+        systemPersona: 'Very strict interviewer',
+        resolvedPrompt: 'Prompt body v1',
+      },
+      createdAt: new Date('2026-03-26T15:30:00.000Z'),
+    });
+
+    const saved = await saveSession(session);
+    const loaded = await getSessionById(saved.id);
+
+    expect(loaded?.promptSnapshot).toEqual({
+      modelVariant: 'gpt-4.1-mini',
+      evaluationStrictness: 'strict',
+      systemPersona: 'Very strict interviewer',
+      resolvedPrompt: 'Prompt body v1',
+    });
+  });
+
   it('returns empty audio file list for missing session id', async () => {
     const audioFiles = await listSessionAudioFiles('missing-session-id');
     expect(audioFiles).toEqual([]);

@@ -19,7 +19,9 @@ import {
     validateInputMode,
     validateQuestionsPerBatch,
 } from '@/lib/interview-rules';
+import { buildSessionPromptSnapshot } from '@/lib/prompt-template';
 import { createSessionFromQuestionList, listSessions, saveSession } from '@/lib/repositories/session-repository';
+import { getAppSettings } from '@/lib/repositories/settings-repository';
 
 function buildQuestionListFromGeneration(input: {
   titleHint: string;
@@ -221,9 +223,19 @@ export default function PrepareScreen() {
       questionCountPerDifficulty: count,
     });
 
+    const appSettings = await getAppSettings();
+    const promptSnapshot = buildSessionPromptSnapshot({
+      roleDescription: questionList.roleDescription,
+      inputMode: mode,
+      selectedDifficulties: activeDifficulties,
+      questionCountPerDifficulty: count,
+      promptSettings: appSettings.promptSettings,
+    });
+
     const session = createSessionFromQuestionList({
       sessionNameFromModel: questionList.roleDescription,
       questionList,
+      promptSnapshot,
     });
 
     await saveSession(session);

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { getAppSettings, patchAppSettings, saveAppSettings } from '@/lib/repositories/settings-repository';
+import { getAppSettings, patchAppSettings, patchPromptSettings, saveAppSettings } from '@/lib/repositories/settings-repository';
 import { __resetJsonStorageForTests } from '@/lib/storage/json-storage';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -32,14 +32,43 @@ describe('settings repository', () => {
 
     expect(settings.activeSessionId).toBeNull();
     expect(settings.recordingLimitSeconds).toBe(120);
+    expect(settings.promptSettings.modelVariant).toBe('gpt-4.1-mini');
+    expect(settings.promptSettings.evaluationStrictness).toBe('balanced');
   });
 
   it('persists and patches settings json', async () => {
-    await saveAppSettings({ activeSessionId: 'session-1', recordingLimitSeconds: 180 });
+    await saveAppSettings({
+      activeSessionId: 'session-1',
+      recordingLimitSeconds: 180,
+      promptSettings: {
+        modelVariant: 'gpt-4.1',
+        evaluationStrictness: 'strict',
+        systemPersona: 'Structured and direct interviewer',
+      },
+    });
 
     const patched = await patchAppSettings({ activeSessionId: 'session-2' });
 
     expect(patched.activeSessionId).toBe('session-2');
     expect(patched.recordingLimitSeconds).toBe(180);
+    expect(patched.promptSettings.modelVariant).toBe('gpt-4.1');
+  });
+
+  it('patches prompt settings without dropping existing setting fields', async () => {
+    await saveAppSettings({
+      activeSessionId: 'session-1',
+      recordingLimitSeconds: 200,
+      promptSettings: {
+        modelVariant: 'gpt-4.1-mini',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coaching interviewer',
+      },
+    });
+
+    const updated = await patchPromptSettings({ evaluationStrictness: 'lenient' });
+
+    expect(updated.promptSettings.evaluationStrictness).toBe('lenient');
+    expect(updated.promptSettings.modelVariant).toBe('gpt-4.1-mini');
+    expect(updated.recordingLimitSeconds).toBe(200);
   });
 });

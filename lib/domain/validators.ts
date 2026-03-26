@@ -1,5 +1,5 @@
 import { Answer, Difficulty, Evaluation, Question, QuestionList } from '@/lib/domain/interview-models';
-import { Session } from '@/lib/domain/session-models';
+import { EVALUATION_STRICTNESS_LEVELS, MODEL_VARIANTS, Session } from '@/lib/domain/session-models';
 
 export interface ValidationResult {
   ok: boolean;
@@ -130,6 +130,24 @@ export function validateSession(session: Session): ValidationResult {
 
   const questionListResult = validateQuestionList(session.questionList);
   errors.push(...questionListResult.errors);
+
+  if (session.promptSnapshot) {
+    if (!MODEL_VARIANTS.includes(session.promptSnapshot.modelVariant)) {
+      errors.push('Session prompt snapshot model variant is invalid.');
+    }
+
+    if (!EVALUATION_STRICTNESS_LEVELS.includes(session.promptSnapshot.evaluationStrictness)) {
+      errors.push('Session prompt snapshot strictness is invalid.');
+    }
+
+    if (session.promptSnapshot.systemPersona.trim().length === 0) {
+      errors.push('Session prompt snapshot persona cannot be empty.');
+    }
+
+    if (session.promptSnapshot.resolvedPrompt.trim().length === 0) {
+      errors.push('Session prompt snapshot resolved prompt cannot be empty.');
+    }
+  }
 
   return { ok: errors.length === 0, errors };
 }

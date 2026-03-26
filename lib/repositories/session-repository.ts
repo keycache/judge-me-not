@@ -1,5 +1,5 @@
 import { QuestionList } from '@/lib/domain/interview-models';
-import { AudioIndexEntry, Session } from '@/lib/domain/session-models';
+import { AudioIndexEntry, Session, SessionPromptSnapshot } from '@/lib/domain/session-models';
 import { validateSession } from '@/lib/domain/validators';
 import { buildSessionIdentity } from '@/lib/session-identity';
 import { readJsonValue, removeJsonValue, writeJsonValue } from '@/lib/storage/json-storage';
@@ -30,6 +30,7 @@ export function buildAudioIndex(questionList: QuestionList): AudioIndexEntry[] {
 export function createSessionFromQuestionList(input: {
   sessionNameFromModel: string;
   questionList: QuestionList;
+  promptSnapshot?: SessionPromptSnapshot | null;
   createdAt?: Date;
 }): Session {
   const timestamp = input.createdAt ?? new Date();
@@ -43,6 +44,7 @@ export function createSessionFromQuestionList(input: {
     updatedAtIso: iso,
     questionList: input.questionList,
     audioIndex: buildAudioIndex(input.questionList),
+    promptSnapshot: input.promptSnapshot ?? null,
   };
 }
 
