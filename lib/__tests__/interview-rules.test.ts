@@ -1,11 +1,11 @@
 import {
-    buildHumanFriendlySessionId,
-    MAX_IMAGE_SIZE_BYTES,
-    MAX_IMAGES,
-    scoreOutOfTenToHundred,
-    validateImageSelection,
-    validateInputMode,
-    validateQuestionsPerBatch,
+  buildHumanFriendlySessionId,
+  MAX_IMAGE_SIZE_BYTES,
+  MAX_IMAGES,
+  scoreOutOfTenToHundred,
+  validateImageSelection,
+  validateInputMode,
+  validateQuestionsPerBatch,
 } from '../interview-rules';
 
 describe('interview rules', () => {
@@ -31,9 +31,27 @@ describe('interview rules', () => {
       expect(result.ok).toBe(false);
       expect(result.errors[0]).toMatch(/text input is not allowed/i);
     });
+
+    it('rejects text mode when description is empty', () => {
+      const result = validateInputMode('text', '   ', []);
+      expect(result.ok).toBe(false);
+      expect(result.errors[0]).toMatch(/text description is required/i);
+    });
+
+    it('rejects image mode when no images are provided', () => {
+      const result = validateInputMode('image', '', []);
+      expect(result.ok).toBe(false);
+      expect(result.errors[0]).toMatch(/at least one image is required/i);
+    });
   });
 
   describe('validateImageSelection', () => {
+    it('rejects empty image list', () => {
+      const result = validateImageSelection([]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.join(' ')).toMatch(/at least one image is required/i);
+    });
+
     it('rejects more than max images', () => {
       const images = Array.from({ length: MAX_IMAGES + 1 }, (_, i) => ({
         uri: `img-${i}.png`,
@@ -71,6 +89,18 @@ describe('interview rules', () => {
       const result = validateQuestionsPerBatch(31);
       expect(result.ok).toBe(false);
       expect(result.errors[0]).toMatch(/cannot exceed 30/i);
+    });
+
+    it('rejects values below 1', () => {
+      const result = validateQuestionsPerBatch(0);
+      expect(result.ok).toBe(false);
+      expect(result.errors[0]).toMatch(/at least 1/i);
+    });
+
+    it('rejects non-integer values', () => {
+      const result = validateQuestionsPerBatch(2.5);
+      expect(result.ok).toBe(false);
+      expect(result.errors[0]).toMatch(/must be an integer/i);
     });
   });
 

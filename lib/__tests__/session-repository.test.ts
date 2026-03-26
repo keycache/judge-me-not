@@ -93,6 +93,45 @@ describe('session repository', () => {
     expect(audioFiles).toEqual(['file:///sessions/audio-a1.m4a']);
   });
 
+  it('returns empty audio file list for missing session id', async () => {
+    const audioFiles = await listSessionAudioFiles('missing-session-id');
+    expect(audioFiles).toEqual([]);
+  });
+
+  it('lists sessions sorted by most recent creation date first', async () => {
+    const older = createSessionFromQuestionList({
+      sessionNameFromModel: 'Older Session',
+      questionList: buildQuestionList(),
+      createdAt: new Date('2026-03-26T09:00:00.000Z'),
+    });
+
+    const newer = createSessionFromQuestionList({
+      sessionNameFromModel: 'Newer Session',
+      questionList: buildQuestionList(),
+      createdAt: new Date('2026-03-26T18:00:00.000Z'),
+    });
+
+    await saveSession(older);
+    await saveSession(newer);
+
+    const sessions = await listSessions();
+    expect(sessions).toHaveLength(2);
+    expect(sessions[0].title).toBe('Newer Session');
+    expect(sessions[1].title).toBe('Older Session');
+  });
+
+  it('rejects saving invalid sessions', async () => {
+    const invalid = createSessionFromQuestionList({
+      sessionNameFromModel: 'Broken Session',
+      questionList: buildQuestionList(),
+      createdAt: new Date('2026-03-26T17:00:00.000Z'),
+    });
+
+    invalid.questionList.questions = [];
+
+    await expect(saveSession(invalid)).rejects.toThrow(/at least one question/i);
+  });
+
   it('deletes sessions from repository', async () => {
     const session = createSessionFromQuestionList({
       sessionNameFromModel: 'Delete Me',

@@ -6,11 +6,13 @@ interface AppButtonProps {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'ghost';
+  testID?: string;
 }
 
-export function AppButton({ label, onPress, variant = 'primary' }: AppButtonProps) {
+export function AppButton({ label, onPress, variant = 'primary', testID }: AppButtonProps) {
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
