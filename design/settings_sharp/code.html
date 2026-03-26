@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>System Settings | LUMINARY AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "error-container": "#93000a",
+              "surface-dim": "#13131b",
+              "on-primary-fixed": "#07006c",
+              "error": "#ffb4ab",
+              "secondary": "#c0c1ff",
+              "on-tertiary-container": "#452000",
+              "tertiary-fixed": "#ffdcc5",
+              "surface-tint": "#c0c1ff",
+              "primary-container": "#8083ff",
+              "on-secondary": "#292a60",
+              "on-primary-container": "#0d0096",
+              "inverse-primary": "#494bd6",
+              "secondary-fixed": "#e1e0ff",
+              "surface-bright": "#393841",
+              "surface-container-low": "#1b1b23",
+              "on-surface-variant": "#c7c4d7",
+              "primary": "#c0c1ff",
+              "on-primary": "#1000a9",
+              "surface-variant": "#34343d",
+              "on-tertiary": "#4f2500",
+              "on-tertiary-fixed": "#301400",
+              "inverse-surface": "#e4e1ed",
+              "on-surface": "#e4e1ed",
+              "primary-fixed-dim": "#c0c1ff",
+              "on-error-container": "#ffdad6",
+              "on-primary-fixed-variant": "#2f2ebe",
+              "background": "#13131b",
+              "tertiary-container": "#d97721",
+              "tertiary-fixed-dim": "#ffb783",
+              "outline": "#908fa0",
+              "surface-container-high": "#292932",
+              "on-secondary-fixed": "#13144a",
+              "surface-container-highest": "#34343d",
+              "surface": "#13131b",
+              "primary-fixed": "#e1e0ff",
+              "surface-container": "#1f1f27",
+              "secondary-fixed-dim": "#c0c1ff",
+              "secondary-container": "#42447b",
+              "on-secondary-container": "#b2b3f2",
+              "on-error": "#690005",
+              "on-tertiary-fixed-variant": "#703700",
+              "surface-container-lowest": "#0d0d15",
+              "on-secondary-fixed-variant": "#404178",
+              "inverse-on-surface": "#303038",
+              "on-background": "#e4e1ed",
+              "tertiary": "#ffb783",
+              "outline-variant": "#464554"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #13131b; }
+        ::-webkit-scrollbar-thumb { background: #464554; }
+        .glass-panel {
+            background: rgba(52, 52, 61, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(144, 143, 160, 0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container/30">
+<!-- TopAppBar Shell -->
+<header class="bg-[#13131b] border-none flex items-center justify-between px-6 py-4 w-full sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#c0c1ff]" style="font-size: 24px;">architecture</span>
+<h1 class="font-['Manrope'] font-black tracking-[-0.02em] uppercase text-[#c0c1ff] text-xl">LUMINARY AI</h1>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-400 font-label text-xs tracking-widest uppercase hover:bg-[#1f1f27] transition-colors px-3 py-2" href="#">Prepare</a>
+<a class="text-slate-400 font-label text-xs tracking-widest uppercase hover:bg-[#1f1f27] transition-colors px-3 py-2" href="#">Practice</a>
+<a class="text-slate-400 font-label text-xs tracking-widest uppercase hover:bg-[#1f1f27] transition-colors px-3 py-2" href="#">Insights</a>
+<a class="text-[#c0c1ff] font-label text-xs tracking-widest uppercase hover:bg-[#1f1f27] transition-colors px-3 py-2" href="#">Profile</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-slate-400 hover:text-white transition-colors">notifications</button>
+<div class="w-8 h-8 bg-surface-container-high border border-outline-variant/20 flex items-center justify-center">
+<span class="text-[10px] font-bold">JD</span>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 py-10 pb-32">
+<!-- Page Header -->
+<div class="mb-12">
+<p class="text-primary font-label text-xs tracking-[0.2em] uppercase mb-2">Architect Console</p>
+<h2 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">System Settings</h2>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: Configuration -->
+<div class="lg:col-span-8 space-y-6">
+<!-- Model Selection Card -->
+<section class="bg-surface-container-low p-8 border-l-4 border-primary">
+<div class="flex items-start justify-between mb-8">
+<div>
+<h3 class="font-headline text-xl font-bold mb-1">Model Selection</h3>
+<p class="text-on-surface-variant text-sm">Choose the LLM engine powering your evaluation architecture.</p>
+</div>
+<span class="material-symbols-outlined text-outline">settings_input_component</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<label class="relative flex flex-col p-6 bg-surface-container cursor-pointer border border-outline-variant/10 hover:bg-surface-container-high transition-all group">
+<input checked="" class="absolute top-4 right-4 text-primary bg-surface-container-highest border-outline-variant focus:ring-primary" name="model" type="radio"/>
+<span class="font-bold text-on-surface mb-1">Gemini 1.5 Pro</span>
+<span class="text-xs text-on-surface-variant uppercase tracking-wider mb-3">Precision Engine</span>
+<p class="text-sm text-on-surface-variant leading-relaxed">High-fidelity reasoning for complex behavioral analysis and nuanced feedback.</p>
+</label>
+<label class="relative flex flex-col p-6 bg-surface-container cursor-pointer border border-outline-variant/10 hover:bg-surface-container-high transition-all group">
+<input class="absolute top-4 right-4 text-primary bg-surface-container-highest border-outline-variant focus:ring-primary" name="model" type="radio"/>
+<span class="font-bold text-on-surface mb-1">Gemini 1.5 Flash</span>
+<span class="text-xs text-on-surface-variant uppercase tracking-wider mb-3">Velocity Engine</span>
+<p class="text-sm text-on-surface-variant leading-relaxed">Low-latency responses optimized for rapid-fire practice rounds and real-time hints.</p>
+</label>
+</div>
+</section>
+<!-- Evaluation Strictness -->
+<section class="bg-surface-container-low p-8">
+<div class="mb-8">
+<h3 class="font-headline text-xl font-bold mb-1">Evaluation Strictness</h3>
+<p class="text-on-surface-variant text-sm">Adjust the AI's critical threshold for scoring and feedback generation.</p>
+</div>
+<div class="px-2">
+<input class="w-full h-1 bg-surface-container-highest appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="50"/>
+<div class="flex justify-between mt-6 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">
+<div class="flex flex-col items-start gap-2">
+<div class="w-px h-2 bg-outline-variant"></div>
+<span>Lenient</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-px h-2 bg-primary"></div>
+<span class="text-primary font-bold">Balanced</span>
+</div>
+<div class="flex flex-col items-end gap-2">
+<div class="w-px h-2 bg-outline-variant"></div>
+<span>Critical</span>
+</div>
+</div>
+</div>
+</section>
+<!-- System Instructions -->
+<section class="bg-surface-container-low p-8">
+<div class="flex items-center gap-3 mb-6">
+<h3 class="font-headline text-xl font-bold">System Instructions</h3>
+<span class="bg-tertiary-container/20 text-tertiary text-[10px] px-2 py-0.5 font-bold uppercase tracking-tighter">AI Persona</span>
+</div>
+<div class="relative group">
+<div class="absolute -left-2 top-0 bottom-0 w-[2px] bg-primary opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+<textarea class="w-full bg-surface-container-highest border-none text-on-surface font-body text-sm leading-relaxed p-4 focus:ring-0 placeholder:text-outline/50" placeholder="Define the AI's behavior, tone, and specific constraints..." rows="6">You are an elite technical recruiter with 15 years of experience at top-tier architectural firms. Your tone is professional, direct, and data-driven. You prioritize structural integrity in answers and look for high-stakes problem-solving capabilities. Avoid generic encouragement; focus on technical precision and market relevance.</textarea>
+</div>
+<p class="mt-4 text-xs text-on-surface-variant/60 italic">Changes here directly affect the prompt engineering layer of the underlying model.</p>
+</section>
+</div>
+<!-- Right Column: Stats & Actions -->
+<div class="lg:col-span-4 space-y-6">
+<!-- System Health/Stats -->
+<section class="bg-surface-container p-8 space-y-8">
+<h3 class="font-headline text-lg font-bold border-b border-outline-variant/10 pb-4">Engine Diagnostics</h3>
+<div class="space-y-6">
+<div class="flex justify-between items-end">
+<div>
+<p class="text-[10px] font-label text-outline uppercase tracking-widest mb-1">Compute Usage</p>
+<p class="text-2xl font-headline font-bold text-on-surface">84.2%</p>
+</div>
+<div class="w-24 h-1 bg-surface-container-highest relative">
+<div class="absolute top-0 left-0 h-full bg-primary w-[84%]"></div>
+</div>
+</div>
+<div class="flex justify-between items-end">
+<div>
+<p class="text-[10px] font-label text-outline uppercase tracking-widest mb-1">Avg Latency</p>
+<p class="text-2xl font-headline font-bold text-on-surface">1.2s</p>
+</div>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">speed</span>
+</div>
+<div class="pt-4 border-t border-outline-variant/10">
+<p class="text-[10px] font-label text-outline uppercase tracking-widest mb-1">Last Update</p>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-xs text-tertiary">history</span>
+<p class="text-sm font-medium">Oct 24, 2023 • 14:32 UTC</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Apply Changes Card -->
+<section class="bg-primary p-1">
+<div class="bg-surface-container-lowest p-8 flex flex-col gap-6">
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                            Updating the system will re-initialize the AI context and may terminate any active practice sessions.
+                        </p>
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-4 uppercase tracking-[0.1em] text-xs hover:opacity-90 active:scale-95 transition-all">
+                            Apply System Update
+                        </button>
+</div>
+</section>
+<!-- Visualization Decor -->
+<div class="h-40 bg-surface-container-low relative overflow-hidden flex items-center justify-center">
+<div class="absolute inset-0 opacity-10 bg-[radial-gradient(#c0c1ff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+<div class="relative z-10 text-center px-6">
+<span class="material-symbols-outlined text-primary/40 text-4xl mb-2">monitoring</span>
+<p class="text-[10px] uppercase tracking-[0.3em] text-outline">Real-time Optimization Active</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-[#13131b]">
+<a class="flex flex-col items-center justify-center text-slate-500 py-2 px-4 hover:bg-[#1f1f27] transition-all" href="#">
+<span class="material-symbols-outlined mb-1">edit_note</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Prepare</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 py-2 px-4 hover:bg-[#1f1f27] transition-all" href="#">
+<span class="material-symbols-outlined mb-1">model_training</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Practice</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 py-2 px-4 hover:bg-[#1f1f27] transition-all" href="#">
+<span class="material-symbols-outlined mb-1">insights</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#6366F1] text-white py-2 px-4 active:opacity-80 transition-all" href="#">
+<span class="material-symbols-outlined mb-1">account_circle</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Profile</span>
+</a>
+</nav>
+</body></html>

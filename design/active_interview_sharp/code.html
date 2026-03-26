@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "error-container": "#93000a",
+              "surface-dim": "#13131b",
+              "on-primary-fixed": "#07006c",
+              "error": "#ffb4ab",
+              "secondary": "#c0c1ff",
+              "on-tertiary-container": "#452000",
+              "tertiary-fixed": "#ffdcc5",
+              "surface-tint": "#c0c1ff",
+              "primary-container": "#8083ff",
+              "on-secondary": "#292a60",
+              "on-primary-container": "#0d0096",
+              "inverse-primary": "#494bd6",
+              "secondary-fixed": "#e1e0ff",
+              "surface-bright": "#393841",
+              "surface-container-low": "#1b1b23",
+              "on-surface-variant": "#c7c4d7",
+              "primary": "#c0c1ff",
+              "on-primary": "#1000a9",
+              "surface-variant": "#34343d",
+              "on-tertiary": "#4f2500",
+              "on-tertiary-fixed": "#301400",
+              "inverse-surface": "#e4e1ed",
+              "on-surface": "#e4e1ed",
+              "primary-fixed-dim": "#c0c1ff",
+              "on-error-container": "#ffdad6",
+              "on-primary-fixed-variant": "#2f2ebe",
+              "background": "#13131b",
+              "tertiary-container": "#d97721",
+              "tertiary-fixed-dim": "#ffb783",
+              "outline": "#908fa0",
+              "surface-container-high": "#292932",
+              "on-secondary-fixed": "#13144a",
+              "surface-container-highest": "#34343d",
+              "surface": "#13131b",
+              "primary-fixed": "#e1e0ff",
+              "surface-container": "#1f1f27",
+              "secondary-fixed-dim": "#c0c1ff",
+              "secondary-container": "#42447b",
+              "on-secondary-container": "#b2b3f2",
+              "on-error": "#690005",
+              "on-tertiary-fixed-variant": "#703700",
+              "surface-container-lowest": "#0d0d15",
+              "on-secondary-fixed-variant": "#404178",
+              "inverse-on-surface": "#303038",
+              "on-background": "#e4e1ed",
+              "tertiary": "#ffb783",
+              "outline-variant": "#464554"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "2px", "xl": "2px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(52, 52, 61, 0.4);
+            backdrop-filter: blur(16px);
+            border-left: 2px solid #c0c1ff;
+        }
+        .audio-wave {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            height: 40px;
+        }
+        .wave-bar {
+            width: 3px;
+            background: #c0c1ff;
+            border-radius: 0px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- Top Navigation Anchor -->
+<header class="bg-[#13131b] flex items-center justify-between px-6 py-4 w-full fixed top-0 z-50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#c0c1ff]" data-icon="architecture">architecture</span>
+<span class="font-['Manrope'] font-black tracking-[-0.02em] uppercase text-[#c0c1ff] text-xl">LUMINARY AI</span>
+</div>
+<div class="hidden md:flex gap-8 items-center">
+<span class="text-slate-400 font-label uppercase tracking-widest text-[10px] cursor-pointer hover:bg-[#1f1f27] transition-colors px-3 py-1">Prepare</span>
+<span class="text-[#c0c1ff] font-label uppercase tracking-widest text-[10px] cursor-pointer hover:bg-[#1f1f27] transition-colors px-3 py-1">Practice</span>
+<span class="text-slate-400 font-label uppercase tracking-widest text-[10px] cursor-pointer hover:bg-[#1f1f27] transition-colors px-3 py-1">Insights</span>
+<span class="text-slate-400 font-label uppercase tracking-widest text-[10px] cursor-pointer hover:bg-[#1f1f27] transition-colors px-3 py-1">Profile</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+<span class="font-label text-[10px] tracking-widest uppercase text-error">LIVE SESSION</span>
+</div>
+</header>
+<main class="pt-24 pb-32 px-4 md:px-8 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: Scenario & Voice Interaction -->
+<div class="lg:col-span-7 flex flex-col gap-6">
+<!-- Active Scenario Card -->
+<section class="bg-surface-container-low p-6 border-l-4 border-primary shadow-none">
+<div class="flex justify-between items-start mb-6">
+<span class="label-md uppercase tracking-[0.1em] text-[10px] text-primary font-bold">Current Scenario</span>
+<span class="font-mono text-xs text-outline">SC-04 // BEHAVIORAL</span>
+</div>
+<h1 class="font-headline font-extrabold text-2xl md:text-3xl tracking-tight text-on-surface mb-4">
+                    "Tell me about a time you had to manage a conflict within a cross-functional team under a tight deadline."
+                </h1>
+<p class="text-on-surface-variant text-sm leading-relaxed max-w-2xl">
+                    Focus on your specific role in the resolution and the impact your intervention had on the project delivery timeline.
+                </p>
+</section>
+<!-- Interaction Visualizer -->
+<section class="bg-surface-container h-[340px] flex flex-col items-center justify-center relative overflow-hidden">
+<!-- AI Visualizer Aura -->
+<div class="absolute inset-0 flex items-center justify-center opacity-10">
+<div class="w-64 h-64 bg-primary blur-[80px] rounded-full"></div>
+</div>
+<!-- Audio Wave Visualizer -->
+<div class="audio-wave mb-12 relative z-10">
+<div class="wave-bar h-4"></div>
+<div class="wave-bar h-8"></div>
+<div class="wave-bar h-16"></div>
+<div class="wave-bar h-24"></div>
+<div class="wave-bar h-32"></div>
+<div class="wave-bar h-20"></div>
+<div class="wave-bar h-28"></div>
+<div class="wave-bar h-12"></div>
+<div class="wave-bar h-24"></div>
+<div class="wave-bar h-16"></div>
+<div class="wave-bar h-6"></div>
+</div>
+<!-- Mic Controls -->
+<div class="flex flex-col items-center gap-6 relative z-10">
+<button class="w-20 h-20 bg-gradient-to-br from-primary to-primary-container flex items-center justify-center active:scale-95 transition-all shadow-xl">
+<span class="material-symbols-outlined text-on-primary text-4xl" data-icon="mic" data-weight="fill">mic</span>
+</button>
+<div class="flex flex-col items-center gap-1">
+<span class="font-label text-[10px] tracking-widest uppercase text-primary font-bold">Recording Active</span>
+<span class="text-on-surface-variant font-mono text-xs">02:41 / 05:00</span>
+</div>
+</div>
+<!-- Live Evaluation Score Floating Bar -->
+<div class="absolute bottom-6 left-6 right-6">
+<div class="bg-surface-container-highest/60 backdrop-blur-md p-4 flex items-center justify-between">
+<div class="flex flex-col gap-1">
+<span class="font-label text-[9px] tracking-widest uppercase text-on-surface-variant">Live Confidence Score</span>
+<div class="flex items-center gap-2">
+<span class="font-headline font-bold text-xl text-primary">84</span>
+<span class="text-outline text-xs">/ 100</span>
+</div>
+</div>
+<div class="flex-1 max-w-[200px] h-1.5 bg-surface-container mx-6 overflow-hidden">
+<div class="h-full bg-primary" style="width: 84%;"></div>
+</div>
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+<span class="font-label text-[10px] font-bold">STABLE</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Analysis & Feedback -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<!-- Analysis Panel -->
+<section class="bg-surface-container-low h-full flex flex-col">
+<div class="p-6 border-b border-outline-variant/10">
+<h2 class="font-headline font-bold text-lg tracking-tight uppercase text-on-surface">Analysis &amp; Feedback</h2>
+</div>
+<div class="p-6 overflow-y-auto space-y-8">
+<!-- Transcription Snippet -->
+<div class="space-y-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="text_fields">text_fields</span>
+<span class="font-label text-[10px] tracking-widest uppercase font-bold">Transcription snippet</span>
+</div>
+<div class="bg-surface-container-highest p-4 font-body text-sm italic border-l-2 border-primary/30 text-on-surface-variant leading-relaxed">
+                            "...so I coordinated between the engineering and marketing teams. I noticed the tension was mostly about the lack of technical documentation, so I implemented a quick daily standup specifically for the launch week..."
+                        </div>
+</div>
+<!-- Critical Gaps -->
+<div class="space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="warning">warning</span>
+<span class="font-label text-[10px] tracking-widest uppercase font-bold text-tertiary">Critical Gaps</span>
+</div>
+<ul class="space-y-3">
+<li class="flex items-start gap-3 text-sm">
+<span class="w-1.5 h-1.5 mt-1.5 bg-tertiary shrink-0"></span>
+<span class="text-on-surface">Quantifiable impact is missing. Mention specific KPIs (e.g., % of delay reduced).</span>
+</li>
+<li class="flex items-start gap-3 text-sm">
+<span class="w-1.5 h-1.5 mt-1.5 bg-tertiary shrink-0"></span>
+<span class="text-on-surface">Specific conflict trigger not clearly defined. Be more technical about the source of friction.</span>
+</li>
+</ul>
+</div>
+<!-- STAR Framework Guide -->
+<div class="space-y-4 pt-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="architecture">architecture</span>
+<span class="font-label text-[10px] tracking-widest uppercase font-bold text-primary">Ideal STAR Framework</span>
+</div>
+<span class="font-mono text-[10px] text-outline">GUIDE // BEHAVIORAL</span>
+</div>
+<div class="grid grid-cols-2 gap-px bg-outline-variant/20">
+<div class="bg-surface-container p-4">
+<div class="text-[9px] font-bold text-outline-variant uppercase mb-1">Situation</div>
+<p class="text-[11px] text-on-surface-variant">Q4 Product Launch, 30% resource cut.</p>
+</div>
+<div class="bg-surface-container p-4">
+<div class="text-[9px] font-bold text-outline-variant uppercase mb-1">Task</div>
+<p class="text-[11px] text-on-surface-variant">Align Engineering and UX by Friday EOD.</p>
+</div>
+<div class="bg-surface-container p-4">
+<div class="text-[9px] font-bold text-outline-variant uppercase mb-1">Action</div>
+<p class="text-[11px] text-on-surface-variant">Bridged technical gap using Figma specs.</p>
+</div>
+<div class="bg-surface-container p-4">
+<div class="text-[9px] font-bold text-outline-variant uppercase mb-1">Result</div>
+<p class="text-[11px] text-on-surface-variant">On-time delivery, +15% team efficiency.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Action -->
+<div class="mt-auto p-6 bg-surface-container-highest/20">
+<button class="w-full py-4 bg-outline-variant/10 text-on-surface text-[10px] font-bold tracking-widest uppercase border border-outline-variant/20 hover:bg-outline-variant/20 transition-all">
+                        Request Alternative Question
+                    </button>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-[#13131b]">
+<div class="flex flex-col items-center justify-center text-slate-500 py-2 px-4 cursor-pointer hover:bg-[#1f1f27]">
+<span class="material-symbols-outlined mb-1" data-icon="edit_note">edit_note</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Prepare</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-[#6366F1] text-white py-2 px-4 cursor-pointer">
+<span class="material-symbols-outlined mb-1" data-icon="model_training">model_training</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Practice</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-500 py-2 px-4 cursor-pointer hover:bg-[#1f1f27]">
+<span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Insights</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-500 py-2 px-4 cursor-pointer hover:bg-[#1f1f27]">
+<span class="material-symbols-outlined mb-1" data-icon="account_circle">account_circle</span>
+<span class="font-['Inter'] font-medium text-[10px] tracking-widest uppercase">Profile</span>
+</div>
+</nav>
+</body></html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "surface-container-low": "#1b1b23",
+                "secondary": "#c0c1ff",
+                "outline": "#908fa0",
+                "on-tertiary-fixed": "#301400",
+                "on-primary": "#1000a9",
+                "on-secondary-fixed": "#13144a",
+                "on-primary-fixed-variant": "#2f2ebe",
+                "on-background": "#e4e1ed",
+                "on-error": "#690005",
+                "primary": "#6366F1",
+                "on-secondary": "#292a60",
+                "secondary-fixed": "#e1e0ff",
+                "surface-dim": "#13131b",
+                "surface-container-high": "#292932",
+                "surface-tint": "#6366F1",
+                "on-tertiary-fixed-variant": "#703700",
+                "tertiary": "#ffb783",
+                "primary-container": "#4f46e5",
+                "on-error-container": "#ffdad6",
+                "on-primary-container": "#ffffff",
+                "primary-fixed": "#e1e0ff",
+                "inverse-on-surface": "#303038",
+                "primary-fixed-dim": "#c0c1ff",
+                "on-primary-fixed": "#07006c",
+                "on-surface-variant": "#c7c4d7",
+                "error-container": "#93000a",
+                "surface-container-highest": "#34343d",
+                "on-tertiary-container": "#452000",
+                "on-tertiary": "#4f2500",
+                "on-secondary-container": "#b2b3f2",
+                "on-surface": "#e4e1ed",
+                "tertiary-fixed-dim": "#ffb783",
+                "surface-bright": "#393841",
+                "secondary-container": "#42447b",
+                "tertiary-container": "#d97721",
+                "surface-variant": "#34343d",
+                "secondary-fixed-dim": "#c0c1ff",
+                "surface-container-lowest": "#0d0d15",
+                "on-secondary-fixed-variant": "#404178",
+                "surface": "#13131b",
+                "error": "#ffb4ab",
+                "tertiary-fixed": "#ffdcc5",
+                "inverse-primary": "#494bd6",
+                "surface-container": "#1f1f27",
+                "outline-variant": "#464554",
+                "background": "#13131b",
+                "inverse-surface": "#e4e1ed"
+              },
+              fontFamily: {
+                "headline": ["Manrope"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0px", "lg": "2px", "xl": "2px", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #13131b;
+            color: #e4e1ed;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(41, 41, 50, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .accent-gradient {
+            background: linear-gradient(135deg, #6366F1 0%, #4f46e5 100%);
+        }
+    </style>
+</head>
+<body class="font-body selection:bg-primary selection:text-white">
+<!-- TopAppBar -->
+<header class="bg-[#13131b] sticky top-0 z-50 flex items-center justify-between w-full px-4 md:px-6 h-16 border-b border-outline-variant/10">
+<div class="flex items-center gap-2 md:gap-3 overflow-hidden">
+<span class="material-symbols-outlined text-primary shrink-0" style="font-size: 24px;">terminal</span>
+<h1 class="text-lg md:text-xl font-black tracking-tighter text-primary truncate">AI INTERVIEW ARCHITECT</h1>
+</div>
+<div class="hidden md:flex gap-8">
+<button class="font-['Manrope'] uppercase tracking-[0.05em] font-bold text-sm text-primary">PREPARE</button>
+<button class="font-['Manrope'] uppercase tracking-[0.05em] font-bold text-sm text-on-surface-variant hover:bg-[#1f1f27] transition-colors px-2">PRACTICE</button>
+<button class="font-['Manrope'] uppercase tracking-[0.05em] font-bold text-sm text-on-surface-variant hover:bg-[#1f1f27] transition-colors px-2">INSIGHTS</button>
+</div>
+<div class="flex items-center gap-2 md:gap-4 shrink-0">
+<button class="material-symbols-outlined text-primary hover:bg-[#1f1f27] p-2 transition-colors">notifications</button>
+<div class="w-8 h-8 bg-surface-container-high border border-outline-variant/20 flex items-center justify-center">
+<span class="text-[10px] font-bold">JD</span>
+</div>
+</div>
+</header>
+<main class="max-w-6xl mx-auto px-4 md:px-6 pt-8 pb-32 overflow-x-hidden">
+<!-- Hero Section / Editorial Header -->
+<section class="mb-10">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-l-4 border-primary pl-4 md:pl-6">
+<div class="min-w-0">
+<span class="label-md text-primary font-bold tracking-[0.2em] uppercase text-xs">Architect Phase 01</span>
+<h2 class="font-headline text-3xl md:text-5xl font-extrabold tracking-tighter mt-2">PREPARE</h2>
+<p class="text-on-surface-variant max-w-md mt-4 font-light leading-relaxed text-sm md:text-base">
+                        Initialize your neural interview engine. Input requirements or restore a previous architectural blueprint to begin technical synthesis.
+                    </p>
+</div>
+<div class="flex flex-row md:flex-col items-center md:items-end gap-4 md:gap-0 text-right shrink-0">
+<span class="text-outline-variant font-mono text-[10px] uppercase">SYSTEM_STATUS: READY</span>
+<span class="text-outline-variant font-mono text-[10px] uppercase">ENCRYPTION: ACTIVE</span>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: New Session Entry -->
+<section class="lg:col-span-8 space-y-6">
+<div class="bg-surface-container-low p-4 md:p-8 border-l border-t border-outline-variant/10">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">add_box</span>
+<h3 class="font-headline text-lg md:text-xl font-bold uppercase tracking-wider">Start New Session</h3>
+</div>
+<!-- Segmented Control -->
+<div class="flex bg-surface-container p-1 rounded-sm self-start sm:self-auto">
+<button class="px-3 md:px-4 py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest bg-primary text-white">Text Description</button>
+<button class="px-3 md:px-4 py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors">Image Upload</button>
+</div>
+</div>
+<!-- Input Area -->
+<div class="space-y-6">
+<div class="relative">
+<label class="block text-[10px] font-bold text-outline uppercase tracking-widest mb-2">Job Description Matrix</label>
+<textarea class="w-full h-64 bg-surface-container border-l-2 border-primary focus:ring-0 focus:outline-none p-4 md:p-6 font-mono text-xs md:text-sm text-on-surface placeholder:text-outline-variant/50 resize-none" placeholder="Paste the full job description text here... Include requirements, tech stack, and company mission for better AI accuracy."></textarea>
+<div class="absolute bottom-4 right-4 text-[10px] font-mono text-outline-variant bg-surface-container/80 px-1">
+                                CHAR_COUNT: 0 / 10000
+                            </div>
+</div>
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="accent-gradient text-white font-bold uppercase tracking-widest text-xs md:text-sm py-4 px-10 hover:opacity-90 transition-opacity flex items-center justify-center gap-3 group w-full sm:w-auto">
+<span>Initialize Architect</span>
+<span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+<button class="border border-outline-variant/30 text-on-surface font-bold uppercase tracking-widest text-xs md:text-sm py-4 px-10 hover:bg-surface-container-high transition-colors w-full sm:w-auto">
+                                Clear Input
+                            </button>
+</div>
+</div>
+</div>
+<!-- Secondary Entry: Image Upload -->
+<div class="bg-surface-container-low p-4 md:p-8 border-l border-t border-outline-variant/10 opacity-60 hover:opacity-100 transition-opacity cursor-pointer group">
+<div class="flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/20 py-8 md:py-12 px-6 group-hover:border-primary/50 transition-colors">
+<span class="material-symbols-outlined text-4xl text-outline-variant group-hover:text-primary mb-4">cloud_upload</span>
+<h4 class="font-headline font-bold uppercase tracking-widest text-sm text-center">Drop Visual Assets</h4>
+<p class="text-[10px] md:text-xs text-outline-variant mt-2 text-center max-w-xs">Upload photos of job listings, whiteboard requirements, or recruitment brochures (JPG, PNG, PDF)</p>
+</div>
+</div>
+</section>
+<!-- Right Column: Recent Sessions -->
+<aside class="lg:col-span-4 space-y-6">
+<div class="bg-surface-container p-4 md:p-6">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">history</span>
+<h3 class="font-headline text-sm font-bold uppercase tracking-widest">Recent Blueprints</h3>
+</div>
+<button class="text-[10px] font-bold text-primary hover:underline">VIEW ALL</button>
+</div>
+<div class="space-y-4">
+<!-- Session Card 1 -->
+<div class="bg-surface-container-high p-4 hover:bg-surface-bright transition-all cursor-pointer group border-l-2 border-transparent hover:border-primary">
+<div class="flex justify-between items-start mb-2 gap-2">
+<h4 class="font-bold text-sm tracking-tight text-on-surface truncate">Senior Frontend Architect</h4>
+<span class="text-[9px] font-mono text-outline-variant shrink-0">ID: 8821</span>
+</div>
+<div class="text-[10px] text-outline-variant font-medium mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                                OCT 24, 2023
+                            </div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
+<span>Synthesis Progress</span>
+<span class="text-primary">42 / 60 Qs</span>
+</div>
+<div class="w-full h-1 bg-surface-container-lowest">
+<div class="h-full bg-primary" style="width: 70%;"></div>
+</div>
+</div>
+</div>
+<!-- Session Card 2 -->
+<div class="bg-surface-container-high p-4 hover:bg-surface-bright transition-all cursor-pointer group border-l-2 border-transparent hover:border-primary">
+<div class="flex justify-between items-start mb-2 gap-2">
+<h4 class="font-bold text-sm tracking-tight text-on-surface truncate">Lead DevOps Engineer</h4>
+<span class="text-[9px] font-mono text-outline-variant shrink-0">ID: 7640</span>
+</div>
+<div class="text-[10px] text-outline-variant font-medium mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                                OCT 21, 2023
+                            </div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
+<span>Synthesis Progress</span>
+<span class="text-tertiary">12 / 45 Qs</span>
+</div>
+<div class="w-full h-1 bg-surface-container-lowest">
+<div class="h-full bg-tertiary-container" style="width: 26%;"></div>
+</div>
+</div>
+</div>
+<!-- Restore from Device -->
+<button class="w-full flex items-center justify-center gap-3 py-4 border border-outline-variant/20 hover:bg-surface-container-high transition-colors group mt-6">
+<span class="material-symbols-outlined text-sm text-outline-variant group-hover:text-primary">download</span>
+<span class="text-[10px] font-bold uppercase tracking-[0.2em]">Load from Local Storage</span>
+</button>
+</div>
+</div>
+<!-- Stats/AI Insights Sidebar -->
+<div class="bg-surface-container-low border-t-4 border-tertiary p-6">
+<h5 class="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-4">Preparation Velocity</h5>
+<div class="space-y-4">
+<div class="flex items-center gap-4">
+<div class="text-2xl font-black font-headline text-on-surface">14.2h</div>
+<div class="text-[10px] text-outline-variant leading-tight uppercase">TOTAL ANALYSIS<br/>THIS WEEK</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center bg-[#13131b]/95 backdrop-blur-xl border-t border-primary/20 z-50 h-16 safe-area-inset-bottom">
+<a class="flex flex-col items-center justify-center text-primary bg-surface-container-high/50 border-t-2 border-primary h-full px-4 min-w-[70px]" href="#">
+<span class="material-symbols-outlined mb-1">edit_note</span>
+<span class="font-['Inter'] font-bold text-[9px] tracking-[0.05em] uppercase">PREPARE</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary h-full px-4 min-w-[70px]" href="#">
+<span class="material-symbols-outlined mb-1">forum</span>
+<span class="font-['Inter'] font-bold text-[9px] tracking-[0.05em] uppercase">PRACTICE</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary h-full px-4 min-w-[70px]" href="#">
+<span class="material-symbols-outlined mb-1">analytics</span>
+<span class="font-['Inter'] font-bold text-[9px] tracking-[0.05em] uppercase">INSIGHTS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary h-full px-4 min-w-[70px]" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-['Inter'] font-bold text-[9px] tracking-[0.05em] uppercase">PROFILE</span>
+</a>
+</nav>
+<!-- Floating Action Button (FAB) -->
+<button class="fixed bottom-20 right-6 md:bottom-8 md:right-8 accent-gradient w-14 h-14 flex items-center justify-center shadow-2xl active:scale-95 transition-transform z-40">
+<span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</button>
+</body></html>

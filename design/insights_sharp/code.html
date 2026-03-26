@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ARCHITECT_AI - Performance Insights</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-container": "#42447b",
+                        "on-surface-variant": "#c7c4d7",
+                        "outline-variant": "#464554",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-tertiary-fixed-variant": "#703700",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#ffdcc5",
+                        "on-background": "#e4e1ed",
+                        "on-secondary": "#292a60",
+                        "background": "#13131b",
+                        "error": "#ffb4ab",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "on-tertiary": "#4f2500",
+                        "surface-container-high": "#292932",
+                        "inverse-surface": "#e4e1ed",
+                        "on-tertiary-fixed": "#301400",
+                        "on-secondary-fixed": "#13144a",
+                        "surface-tint": "#c0c1ff",
+                        "surface-bright": "#393841",
+                        "surface-container-highest": "#34343d",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-primary": "#1000a9",
+                        "outline": "#908fa0",
+                        "error-container": "#93000a",
+                        "surface-dim": "#13131b",
+                        "inverse-on-surface": "#303038",
+                        "on-tertiary-container": "#452000",
+                        "on-primary-fixed": "#07006c",
+                        "primary-fixed": "#e1e0ff",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#ffb783",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-variant": "#34343d",
+                        "surface-container-lowest": "#0d0d15",
+                        "inverse-primary": "#494bd6",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "on-secondary-container": "#b2b3f2",
+                        "surface-container": "#1f1f27",
+                        "on-secondary-fixed-variant": "#404178",
+                        "surface": "#13131b",
+                        "primary": "#c0c1ff",
+                        "on-surface": "#e4e1ed",
+                        "on-primary-container": "#0d0096",
+                        "primary-container": "#8083ff",
+                        "tertiary-container": "#d97721",
+                        "surface-container-low": "#1b1b23",
+                        "secondary": "#c0c1ff"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.125rem", "xl": "0.125rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(41, 41, 50, 0.4);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body selection:bg-primary/30">
+<!-- TopAppBar -->
+<header class="bg-[#13131b] flex justify-between items-center w-full px-6 py-4 docked full-width top-0 border-b border-[#c0c1ff]/15 z-50 sticky">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#c0c1ff] cursor-pointer" data-icon="grid_view">grid_view</span>
+<h1 class="text-xl font-black text-[#c0c1ff] tracking-tighter font-['Manrope'] uppercase">ARCHITECT_AI</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-none border border-primary/20 bg-surface-container overflow-hidden">
+<img alt="User" class="w-full h-full object-cover" data-alt="minimalist professional avatar silhouette in front of a dark geometric background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNtTe_KPYrZHkjrPdsvu0jRHrRTupzRlB6RVKvkBcq2UVWL1sxCd6FaXh4MyG2Te15C3cwYce3FYhQZ2mmZ7OOh-ICaK1LiYIAFzwNbj7Rn-8cRY2Qo9HnjXq7KWjOlqaKUDKT_559lEZDym6bSXpJx8rvibzwkG7V6vMgnjGhiSH5uvfth1rnlEaT4O1Ks-hTH9HLPzuLm-WxPZK-VBmR0_y_HqhobFwzlonfsoYLjOZDJ0bAFrwnPtQHbq4ouH3EXZkEaa7to7YS"/>
+</div>
+</div>
+</header>
+<main class="max-w-6xl mx-auto px-6 py-8 pb-32">
+<!-- Hero Section: Overall Readiness -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12 items-end">
+<div class="lg:col-span-8">
+<p class="font-label text-xs font-bold uppercase tracking-[0.05em] text-primary mb-2">System Diagnostic</p>
+<h2 class="font-headline text-4xl lg:text-6xl font-extrabold tracking-[-0.02em] leading-tight">PERFORMANCE<br/>INSIGHTS</h2>
+</div>
+<div class="lg:col-span-4 bg-surface-container-low p-8 border-l-4 border-primary">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label text-[10px] font-bold uppercase tracking-[0.05em] text-on-surface-variant">Overall Readiness</span>
+<span class="material-symbols-outlined text-primary text-sm" data-icon="verified">verified</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline text-6xl font-black tracking-tighter">78</span>
+<span class="font-headline text-2xl font-bold text-on-surface-variant">/100</span>
+</div>
+<div class="mt-4 h-1.5 w-full bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 78%"></div>
+</div>
+<p class="mt-4 text-sm text-on-surface-variant leading-relaxed">Your profile ranks in the top <span class="text-primary font-bold">12%</span> of candidates for Senior Systems roles.</p>
+</div>
+</div>
+<!-- Bento Grid Insights -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Competency Matrix (Strengths/Weaknesses) -->
+<div class="lg:col-span-2 bg-surface-container-low p-8 relative overflow-hidden">
+<h3 class="font-headline text-xl font-bold mb-8 uppercase tracking-tight">Competency Matrix</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-y-10 gap-x-12">
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<span class="font-label text-xs font-bold uppercase text-on-surface">Technical Depth</span>
+<span class="text-xs font-mono text-primary">88%</span>
+</div>
+<div class="h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 88%"></div>
+</div>
+<div class="flex justify-between items-end pt-2">
+<span class="font-label text-xs font-bold uppercase text-on-surface">Communication</span>
+<span class="text-xs font-mono text-primary">64%</span>
+</div>
+<div class="h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 64%"></div>
+</div>
+<div class="flex justify-between items-end pt-2">
+<span class="font-label text-xs font-bold uppercase text-on-surface">Problem Solving</span>
+<span class="text-xs font-mono text-primary">92%</span>
+</div>
+<div class="h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 92%"></div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<span class="font-label text-xs font-bold uppercase text-on-surface">System Design</span>
+<span class="text-xs font-mono text-primary">76%</span>
+</div>
+<div class="h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 76%"></div>
+</div>
+<div class="flex justify-between items-end pt-2">
+<span class="font-label text-xs font-bold uppercase text-on-surface">Leadership</span>
+<span class="text-xs font-mono text-tertiary">45%</span>
+</div>
+<div class="h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-tertiary" style="width: 45%"></div>
+</div>
+<div class="flex justify-between items-end pt-2">
+<span class="font-label text-xs font-bold uppercase text-on-surface">Behavioral</span>
+<span class="text-xs font-mono text-primary">81%</span>
+</div>
+<div class="h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 81%"></div>
+</div>
+</div>
+</div>
+<!-- Background visual noise -->
+<div class="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-8xl" data-icon="architecture">architecture</span>
+</div>
+</div>
+<!-- Tier Breakdown -->
+<div class="bg-surface-container-low p-8 border-t-4 border-secondary-container">
+<h3 class="font-headline text-xl font-bold mb-8 uppercase tracking-tight">Difficulty Mastery</h3>
+<div class="space-y-8">
+<div class="flex items-center gap-6">
+<div class="w-12 h-12 flex items-center justify-center bg-surface-container border border-outline-variant/10">
+<span class="text-xs font-bold uppercase text-primary">L1</span>
+</div>
+<div class="flex-1">
+<p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Easy Tier</p>
+<p class="text-lg font-bold">96% Accuracy</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-12 h-12 flex items-center justify-center bg-surface-container border border-outline-variant/10">
+<span class="text-xs font-bold uppercase text-primary">L2</span>
+</div>
+<div class="flex-1">
+<p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Medium Tier</p>
+<p class="text-lg font-bold">72% Accuracy</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-12 h-12 flex items-center justify-center bg-surface-container border border-outline-variant/10">
+<span class="text-xs font-bold uppercase text-tertiary">L3</span>
+</div>
+<div class="flex-1">
+<p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Hard Tier</p>
+<p class="text-lg font-bold">48% Accuracy</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Trends (Timeline) -->
+<div class="lg:col-span-3 bg-surface-container-low p-8 relative">
+<div class="flex justify-between items-center mb-10">
+<h3 class="font-headline text-xl font-bold uppercase tracking-tight">Recent Trends</h3>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-primary"></div>
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Readiness</span>
+</div>
+</div>
+</div>
+<div class="h-64 flex items-end justify-between gap-1 group">
+<!-- Column 1 -->
+<div class="flex-1 bg-surface-container-highest relative flex flex-col justify-end h-full">
+<div class="bg-primary/20 w-full h-[40%]"></div>
+<div class="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-on-surface-variant uppercase">Mon</div>
+</div>
+<!-- Column 2 -->
+<div class="flex-1 bg-surface-container-highest relative flex flex-col justify-end h-full">
+<div class="bg-primary/30 w-full h-[45%]"></div>
+<div class="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-on-surface-variant uppercase">Tue</div>
+</div>
+<!-- Column 3 -->
+<div class="flex-1 bg-surface-container-highest relative flex flex-col justify-end h-full">
+<div class="bg-primary/40 w-full h-[42%]"></div>
+<div class="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-on-surface-variant uppercase">Wed</div>
+</div>
+<!-- Column 4 -->
+<div class="flex-1 bg-surface-container-highest relative flex flex-col justify-end h-full">
+<div class="bg-primary/60 w-full h-[58%]"></div>
+<div class="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-on-surface-variant uppercase">Thu</div>
+</div>
+<!-- Column 5 -->
+<div class="flex-1 bg-surface-container-highest relative flex flex-col justify-end h-full">
+<div class="bg-primary/70 w-full h-[65%]"></div>
+<div class="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-on-surface-variant uppercase">Fri</div>
+</div>
+<!-- Column 6 -->
+<div class="flex-1 bg-surface-container-highest relative flex flex-col justify-end h-full">
+<div class="bg-primary w-full h-[78%]"></div>
+<div class="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-on-surface-variant uppercase">Sat</div>
+</div>
+<!-- Column 7 (Active) -->
+<div class="flex-1 bg-primary/10 relative flex flex-col justify-end h-full">
+<div class="bg-primary w-full h-[82%] relative">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-primary text-on-primary text-[10px] font-bold px-2 py-1">82%</div>
+</div>
+<div class="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-primary font-bold uppercase">Sun</div>
+</div>
+</div>
+</div>
+<!-- Insights / AI Note Card -->
+<div class="lg:col-span-3 flex flex-col md:flex-row gap-6">
+<div class="flex-1 bg-tertiary-container text-on-tertiary-container p-6 flex flex-col justify-between">
+<div>
+<span class="material-symbols-outlined mb-4" data-icon="lightbulb">lightbulb</span>
+<h4 class="font-headline font-bold text-lg mb-2">AI RECOMMENDATION</h4>
+<p class="text-sm leading-relaxed opacity-90">Focus on "Communication" within "System Design" sessions. You tend to rush technical explanations. Use the S.T.A.R method to structure your responses more effectively.</p>
+</div>
+<button class="mt-6 flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest hover:underline">
+                        Start Drill Session
+                        <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="flex-1 bg-surface-container-high p-6 flex flex-col border border-outline-variant/15">
+<span class="material-symbols-outlined text-primary mb-4" data-icon="analytics">analytics</span>
+<h4 class="font-headline font-bold text-lg mb-2">SESSION VELOCITY</h4>
+<p class="text-sm text-on-surface-variant mb-6">Your average response time has decreased by <span class="text-on-surface font-bold">14%</span> over the last 10 sessions.</p>
+<div class="mt-auto pt-4 border-t border-outline-variant/10 flex justify-between">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Last Session</span>
+<span class="text-[10px] font-bold text-on-surface">Oct 24, 14:02</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-[#1b1b23] border-t border-[#c0c1ff]/10">
+<!-- Prepare Tab -->
+<a class="flex flex-col items-center justify-center text-[#292932] p-3 hover:bg-[#1f1f27] transition-all flex-1" href="#">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span>
+<span class="font-['Inter'] text-[10px] font-bold uppercase tracking-[0.05em] mt-1">Prepare</span>
+</a>
+<!-- Practice Tab -->
+<a class="flex flex-col items-center justify-center text-[#292932] p-3 hover:bg-[#1f1f27] transition-all flex-1" href="#">
+<span class="material-symbols-outlined" data-icon="model_training">model_training</span>
+<span class="font-['Inter'] text-[10px] font-bold uppercase tracking-[0.05em] mt-1">Practice</span>
+</a>
+<!-- Insights Tab (ACTIVE) -->
+<a class="flex flex-col items-center justify-center bg-[#6366F1] text-white rounded-none p-3 transition-all flex-1" href="#">
+<span class="material-symbols-outlined" data-icon="analytics" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-['Inter'] text-[10px] font-bold uppercase tracking-[0.05em] mt-1">Insights</span>
+</a>
+<!-- Profile Tab -->
+<a class="flex flex-col items-center justify-center text-[#292932] p-3 hover:bg-[#1f1f27] transition-all flex-1" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Inter'] text-[10px] font-bold uppercase tracking-[0.05em] mt-1">Profile</span>
+</a>
+</nav>
+</body></html>
