@@ -1,7 +1,7 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
@@ -21,40 +21,39 @@ import {
   validateQuestionsPerBatch,
 } from '@/lib/interview-rules';
 import { buildSessionPromptSnapshot } from '@/lib/prompt-template';
-import { createSessionFromQuestionList, listSessions, saveSession } from '@/lib/repositories/session-repository';
+import { createSessionFromQuestionList, deleteSession, listSessions, saveSession } from '@/lib/repositories/session-repository';
 import { getAppSettings } from '@/lib/repositories/settings-repository';
+import { generateSessionOneLinerTitle } from '@/lib/session-title';
 
 function buildQuestionListFromGeneration(input: {
-  titleHint: string;
   textDescription: string;
   mode: InputMode;
   selectedDifficulties: Difficulty[];
   questionCountPerDifficulty: number;
 }): QuestionList {
-  const nowIso = new Date().toISOString();
+  const roleContext = input.textDescription || 'Image based role context';
   const questions = input.selectedDifficulties.flatMap((difficulty) =>
     Array.from({ length: input.questionCountPerDifficulty }, (_, index) => ({
-      id: `q-${difficulty}-${Date.now()}-${index}`,
-      prompt:
+      value:
         input.mode === 'text'
           ? `[${difficulty}] ${input.textDescription || 'Behavioral interview'} (#${index + 1})`
           : `[${difficulty}] Image-derived question (#${index + 1})`,
+      category: roleContext,
       difficulty,
+      answer: 'Use a structured STAR response with concrete impact metrics and trade-off analysis.',
       answers: [],
     }))
   );
 
   return {
-    id: `ql-${Date.now()}`,
-    title: input.titleHint,
-    roleDescription: input.textDescription || 'Image based role context',
-    createdAtIso: nowIso,
     questions,
   };
 }
 
 export default function PrepareScreen() {
   const tabBarHeight = useBottomTabBarHeight();
+  const { width: windowWidth } = useWindowDimensions();
+  const carouselPageWidth = Math.max(220, windowWidth - AppTheme.spacing.md * 4);
   const contentBottomPadding = tabBarHeight;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mode, setMode] = useState<InputMode>('text');
@@ -69,6 +68,8 @@ export default function PrepareScreen() {
     Hard: 0,
   });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const loadPersistedSessions = useCallback(async () => {
     const stored = await listSessions();
@@ -219,7 +220,6 @@ export default function PrepareScreen() {
     }, 250);
 
     const questionList = buildQuestionListFromGeneration({
-      titleHint: mode === 'text' ? 'Text Generated Session' : 'Image Generated Session',
       textDescription,
       mode,
       selectedDifficulties: activeDifficulties,
@@ -228,7 +228,7 @@ export default function PrepareScreen() {
 
     const appSettings = await getAppSettings();
     const promptSnapshot = buildSessionPromptSnapshot({
-      roleDescription: questionList.roleDescription,
+      roleDescription: textDescription || 'Image based role context',
       inputMode: mode,
       selectedDifficulties: activeDifficulties,
       questionCountPerDifficulty: count,
@@ -236,14 +236,53 @@ export default function PrepareScreen() {
     });
 
     const session = createSessionFromQuestionList({
-      sessionNameFromModel: questionList.roleDescription,
+      sessionNameFromModel: generateSessionOneLinerTitle({
+        mode,
+        sourceText: textDescription,
+        imageCount: images.length,
+        fallback: mode === 'text' ? 'Interview Session' : 'Image Interview Session',
+      }),
       questionList,
       promptSnapshot,
+      sourceContext: {
+        inputMode: mode,
+        sourceText: mode === 'text' ? textDescription : undefined,
+        imageUris: mode === 'image' ? images.map((image) => image.uri) : undefined,
+      },
     });
 
     await saveSession(session);
     await loadPersistedSessions();
   }, [activeDifficulties, images, loadPersistedSessions, mode, questionCount, textDescription]);
+
+  const onOpenSessionDetails = useCallback((session: Session) => {
+    setSelectedSession(session);
+    setSelectedImageIndex(0);
+  }, []);
+
+  const onCloseSessionDetails = useCallback(() => {
+    setSelectedSession(null);
+  }, []);
+
+  const onDeleteSession = useCallback((session: Session) => {
+    Alert.alert('Delete Session', `Delete "${session.title}"? This cannot be undone.`, [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            await deleteSession(session.id);
+            await loadPersistedSessions();
+            setSelectedSession((current) => (current?.id === session.id ? null : current));
+          })();
+        },
+      },
+    ]);
+  }, [loadPersistedSessions]);
 
   return (
     <AppScreen
@@ -356,12 +395,70 @@ export default function PrepareScreen() {
       <AppCard title="Past Sessions">
         {sessions.length === 0 ? <Text testID="prepare-no-sessions" style={styles.bodyText}>No sessions yet.</Text> : null}
         {sessions.map((session, index) => (
-          <Pressable testID={`prepare-session-row-${index.toString()}`} key={session.id} style={styles.sessionRow}>
-            <Text style={styles.sessionTitle}>{session.title}</Text>
-            <Text style={styles.sessionMeta}>{session.id}</Text>
-          </Pressable>
+          <View key={session.id} style={styles.sessionRowWrap}>
+            <Pressable testID={`prepare-session-row-${index.toString()}`} style={styles.sessionRow} onPress={() => onOpenSessionDetails(session)}>
+              <Text style={styles.sessionTitle}>{session.title}</Text>
+              <Text style={styles.sessionMeta}>{new Date(session.createdAtIso).toLocaleString()}</Text>
+              <Text style={styles.sessionMeta}>{session.questionList.questions.length} questions</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel={`Delete ${session.title}`}
+              onPress={() => onDeleteSession(session)}
+              style={styles.deleteIconButton}
+              testID={`prepare-delete-session-${index.toString()}`}>
+              <Text style={styles.deleteIconText}>DEL</Text>
+            </Pressable>
+          </View>
         ))}
       </AppCard>
+
+      <Modal animationType="slide" transparent visible={Boolean(selectedSession)} onRequestClose={onCloseSessionDetails}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalPanel}>
+            <Text style={styles.modalTitle}>{selectedSession?.title ?? 'Session Details'}</Text>
+            <Text style={styles.sessionMeta}>Mode: {selectedSession?.sourceContext?.inputMode ?? 'unknown'}</Text>
+            <Text style={styles.sessionMeta}>Questions: {selectedSession?.questionList.questions.length ?? 0}</Text>
+            {selectedSession?.sourceContext?.inputMode === 'text' ? (
+              <ScrollView style={styles.detailsScrollArea}>
+                <Text style={styles.bodyText}>{selectedSession.sourceContext.sourceText || 'No text context found.'}</Text>
+              </ScrollView>
+            ) : (
+              <View style={styles.carouselArea}>
+                {selectedSession?.sourceContext?.imageUris && selectedSession.sourceContext.imageUris.length > 0 ? (
+                  <>
+                    <Text style={styles.sessionMeta}>
+                      Image {selectedImageIndex + 1} of {selectedSession.sourceContext.imageUris.length}
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      onMomentumScrollEnd={(event) => {
+                        const nextIndex = Math.round(event.nativeEvent.contentOffset.x / carouselPageWidth);
+                        setSelectedImageIndex(nextIndex);
+                      }}>
+                    {selectedSession.sourceContext.imageUris.map((uri) => (
+                      <View key={uri} style={[styles.carouselPage, { width: carouselPageWidth }]}>
+                        <Image source={{ uri }} style={styles.carouselImage} resizeMode="cover" />
+                        <Text style={styles.sessionMeta}>{uri}</Text>
+                      </View>
+                    ))}
+                    </ScrollView>
+                    <View style={styles.dotsRow}>
+                      {selectedSession.sourceContext.imageUris.map((uri, index) => (
+                        <View key={`${uri}-${index.toString()}`} style={[styles.dot, index === selectedImageIndex ? styles.dotActive : null]} />
+                      ))}
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.bodyText}>No image context found for this session.</Text>
+                )}
+              </View>
+            )}
+            <AppButton label="Close" onPress={onCloseSessionDetails} variant="ghost" />
+          </View>
+        </View>
+      </Modal>
     </AppScreen>
   );
 }
@@ -488,6 +585,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   sessionRow: {
+    flex: 1,
     borderColor: AppTheme.colors.borderSubtle,
     borderWidth: 1,
     backgroundColor: AppTheme.colors.surfaceSecondary,
@@ -505,5 +603,72 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textMuted,
     fontFamily: AppTheme.typography.monoFamily,
     fontSize: 12,
+  },
+  sessionRowWrap: {
+    flexDirection: 'row',
+    gap: AppTheme.spacing.sm,
+    alignItems: 'stretch',
+  },
+  deleteIconButton: {
+    borderColor: AppTheme.colors.warning,
+    borderWidth: 1,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    justifyContent: 'center',
+    paddingHorizontal: AppTheme.spacing.sm,
+  },
+  deleteIconText: {
+    color: AppTheme.colors.warning,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 12,
+    letterSpacing: 0.8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: AppTheme.spacing.md,
+  },
+  modalPanel: {
+    backgroundColor: AppTheme.colors.surfacePrimary,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    padding: AppTheme.spacing.md,
+    gap: AppTheme.spacing.sm,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 16,
+    textTransform: 'uppercase',
+  },
+  detailsScrollArea: {
+    maxHeight: 300,
+  },
+  carouselArea: {
+    minHeight: 240,
+  },
+  carouselPage: {
+    gap: AppTheme.spacing.xs,
+    marginRight: AppTheme.spacing.sm,
+  },
+  carouselImage: {
+    width: '100%',
+    height: 220,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: AppTheme.spacing.xs,
+    alignSelf: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    backgroundColor: AppTheme.colors.borderStrong,
+  },
+  dotActive: {
+    backgroundColor: AppTheme.colors.accent,
   },
 });

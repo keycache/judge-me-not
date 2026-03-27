@@ -1,4 +1,4 @@
-import { Answer } from '@/lib/domain/interview-models';
+import { Answer, buildQuestionValueKey } from '@/lib/domain/interview-models';
 import { Session } from '@/lib/domain/session-models';
 import { evaluateTranscript } from '@/lib/practice-engine';
 import { getSessionById, saveSession } from '@/lib/repositories/session-repository';
@@ -6,87 +6,81 @@ import { readJsonValue, writeJsonValue } from '@/lib/storage/json-storage';
 
 const PENDING_EVALS_STORAGE_KEY = 'judge-me-not.pending-evals.json';
 
-interface PendingEvaluationItem {
+export interface PendingEvaluationItem {
   sessionId: string;
-  questionId: string;
-  answerId: string;
+  questionValueKey: string;
+  answerTimestamp: string;
   queuedAtIso: string;
 }
 
-function findAnswer(session: Session, questionId: string, answerId: string): Answer | null {
-  const question = session.questionList.questions.find((item) => item.id === questionId);
-  if (!question) {
+function findQuestion(session: Session, questionValueKey: string) {
+  return session.questionList.questions.find((item) => buildQuestionValueKey(item) === questionValueKey) ?? null;
+}
+
+function findAnswer(session: Session, questionValueKey: string, answerTimestamp: string): Answer | null {
+  const question = findQuestion(session, questionValueKey);
+  if (!question || !question.answers) {
     return null;
   }
 
-  return question.answers.find((item) => item.id === answerId) ?? null;
-}
-
-function createAnswerId(questionId: string): string {
-  return `ans-${questionId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  return question.answers.find((item) => item.timestamp === answerTimestamp) ?? null;
 }
 
 export async function appendAttempt(input: {
   sessionId: string;
-  questionId: string;
+  questionValueKey: string;
   transcript: string;
-  audioFileUri: string;
-  durationSeconds: number;
+  audioFilePath: string;
 }): Promise<Answer> {
   const session = await getSessionById(input.sessionId);
   if (!session) {
     throw new Error('Session not found.');
   }
 
-  const question = session.questionList.questions.find((item) => item.id === input.questionId);
+  const question = findQuestion(session, input.questionValueKey);
   if (!question) {
     throw new Error('Question not found for session.');
   }
 
+  const timestamp = new Date().toISOString();
   const attempt: Answer = {
-    id: createAnswerId(input.questionId),
-    questionId: input.questionId,
-    transcript: input.transcript,
-    audioFileUri: input.audioFileUri,
-    createdAtIso: new Date().toISOString(),
-    evaluation: null,
-    evaluationStatus: 'draft',
-    submittedAtIso: null,
-    durationSeconds: input.durationSeconds,
+    audio_file_path: input.audioFilePath,
+    timestamp,
   };
 
+  question.answers = question.answers ?? [];
   question.answers.push(attempt);
   await saveSession(session);
   return attempt;
 }
 
-export async function listAttempts(sessionId: string, questionId: string): Promise<Answer[]> {
+export async function listAttempts(sessionId: string, questionValueKey: string): Promise<Answer[]> {
   const session = await getSessionById(sessionId);
   if (!session) {
     return [];
   }
 
-  const question = session.questionList.questions.find((item) => item.id === questionId);
-  return question ? [...question.answers].sort((a, b) => (a.createdAtIso < b.createdAtIso ? 1 : -1)) : [];
+  const question = findQuestion(session, questionValueKey);
+  return question && question.answers ? [...question.answers].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)) : [];
 }
 
 export async function deleteAttempt(input: {
   sessionId: string;
-  questionId: string;
-  answerId: string;
+  questionValueKey: string;
+  answerTimestamp: string;
 }): Promise<boolean> {
   const session = await getSessionById(input.sessionId);
   if (!session) {
     return false;
   }
 
-  const question = session.questionList.questions.find((item) => item.id === input.questionId);
-  if (!question) {
+  const question = findQuestion(session, input.questionValueKey);
+  if (!question || !question.answers) {
     return false;
   }
 
   const beforeCount = question.answers.length;
-  question.answers = question.answers.filter((item) => item.id !== input.answerId);
+  question.answers = question.answers.filter((item) => item.timestamp !== input.answerTimestamp);
   const wasDeleted = question.answers.length < beforeCount;
 
   if (!wasDeleted) {
@@ -98,7 +92,11 @@ export async function deleteAttempt(input: {
   const queue = await getPendingQueue();
   const nextQueue = queue.filter(
     (item) =>
-      !(item.sessionId === input.sessionId && item.questionId === input.questionId && item.answerId === input.answerId)
+      !(
+        item.sessionId === input.sessionId &&
+        item.questionValueKey === input.questionValueKey &&
+        item.answerTimestamp === input.answerTimestamp
+      )
   );
 
   if (nextQueue.length !== queue.length) {
@@ -122,8 +120,9 @@ export async function listPendingEvaluations(): Promise<PendingEvaluationItem[]>
 
 export async function submitAttemptForEvaluation(input: {
   sessionId: string;
-  questionId: string;
-  answerId: string;
+  questionValueKey: string;
+  answerTimestamp: string;
+  transcript: string;
   isOnline: boolean;
 }): Promise<'pending' | 'completed'> {
   const session = await getSessionById(input.sessionId);
@@ -131,30 +130,36 @@ export async function submitAttemptForEvaluation(input: {
     throw new Error('Session not found.');
   }
 
-  const answer = findAnswer(session, input.questionId, input.answerId);
+  const answer = findAnswer(session, input.questionValueKey, input.answerTimestamp);
   if (!answer) {
     throw new Error('Attempt not found.');
   }
 
-  answer.submittedAtIso = new Date().toISOString();
-
   if (!input.isOnline) {
-    answer.evaluationStatus = 'pending';
     await saveSession(session);
 
     const queue = await getPendingQueue();
-    queue.push({
-      sessionId: input.sessionId,
-      questionId: input.questionId,
-      answerId: input.answerId,
-      queuedAtIso: new Date().toISOString(),
-    });
-    await savePendingQueue(queue);
+    const alreadyQueued = queue.some(
+      (item) =>
+        item.sessionId === input.sessionId &&
+        item.questionValueKey === input.questionValueKey &&
+        item.answerTimestamp === input.answerTimestamp
+    );
+
+    if (!alreadyQueued) {
+      queue.push({
+        sessionId: input.sessionId,
+        questionValueKey: input.questionValueKey,
+        answerTimestamp: input.answerTimestamp,
+        queuedAtIso: new Date().toISOString(),
+      });
+      await savePendingQueue(queue);
+    }
+
     return 'pending';
   }
 
-  answer.evaluation = evaluateTranscript(answer.transcript);
-  answer.evaluationStatus = 'completed';
+  answer.evaluation = evaluateTranscript(input.transcript);
   await saveSession(session);
   return 'completed';
 }
@@ -178,18 +183,17 @@ export async function processPendingEvaluations(isOnline: boolean): Promise<numb
       continue;
     }
 
-    const answer = findAnswer(session, item.questionId, item.answerId);
+    const answer = findAnswer(session, item.questionValueKey, item.answerTimestamp);
     if (!answer) {
       continue;
     }
 
-    if (answer.evaluationStatus !== 'pending') {
+    if (answer.evaluation) {
       continue;
     }
 
     try {
-      answer.evaluation = evaluateTranscript(answer.transcript);
-      answer.evaluationStatus = 'completed';
+      answer.evaluation = evaluateTranscript(`Recorded answer at ${answer.timestamp}`);
       await saveSession(session);
       processed += 1;
     } catch {

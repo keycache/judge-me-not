@@ -67,19 +67,65 @@
 
 ---
 
-## Phase 5 - Practice + Schema/Prompt Alignment (In Progress)
+## Phase 5 - Practice + Schema/Prompt Alignment + Session UX (In Progress)
+
+### Progress Tracker (Implemented vs Remaining)
+- Implemented:
+  - Schema alignment foundation migrated to Python-style fields for interview domain objects.
+  - Practice session/question selection UI implemented as dropdown-based selectors + random no-repeat cycle behavior.
+  - Selected-question details panel implemented (full question + category + difficulty + expected-answer focus).
+  - Past answers in Practice moved into collapsible section under selected question details.
+  - Evaluator prompt composer has core + strictness + schema JSON embedding baseline.
+  - Phase 5B kickoff in code:
+    - one-liner session naming utility (60-char cap) wired into Prepare generation.
+    - compact Past Sessions rows (title + metadata only).
+    - session details modal implemented (text details + image carousel with index/dots).
+    - row-level session delete action implemented with confirmation.
+- Remaining in Phase 5:
+  - Session naming from model-generated one-liner title (currently deterministic local helper; replace with LLM output path).
+  - Wire real Google GenAI calls for question generation/evaluation (current behavior still local/mock scaffolding).
+  - Complete integration tests for all new Prepare/Practice behaviors.
+
+### Sub-Phases
+- Phase 5A - Completed Core Foundations
+  - Domain schema rename/refactor and repository baseline migration.
+  - Practice selection + random cycle baseline.
+  - Prompt template architecture baseline.
+- Phase 5B - Session Naming + Prepare Session UX
+  - Generate a concise user-friendly session name using LLM output (one-liner), then append timestamp/identity suffix for uniqueness.
+  - Update Prepare > Past Sessions cards to show only concise title + metadata, not full source text blob.
+  - Add tap-to-open session details and delete-session affordance.
+- Phase 5C - Session Details Modal + Media/Text Context
+  - Text sessions: details panel shows source description and generation settings.
+  - Image sessions: carousel view for selected images with count/index.
+- Phase 5D - GenAI Production Integration + Validation
+  - Replace mock generation/evaluation with Google GenAI SDK request paths.
+  - Parse and validate JSON responses against schema.
+  - Add resiliency/error handling and regression tests.
+
+### Locked Product Decisions (Mar 27, 2026)
+- Session one-liner title max length: 60 characters.
+- Session details presentation: modal on Prepare screen.
+- Delete session control: trash icon on each Past Sessions row.
 
 ### Goals
 - Add explicit session/question controls in Practice:
-  - Session dropdown.
-  - Question dropdown filtered by selected session.
+  - Session dropdown (single-select).
+  - Question dropdown filtered by selected session (single-select, user-friendly one-line labels).
   - Random question picker button that draws from the same filtered list.
+- Show selected question in a dedicated details panel with full text and metadata.
+- Show user past answers in a collapsible section under the selected question details.
 - Random picker must avoid repeats until all questions for the selected session are exhausted, then reset cycle.
 - Align TS data structures to match the Python Pydantic schema fields exactly (no backward compatibility migration).
 - Keep session-as-JSON approach as the primary persistence model.
 - Use Google GenAI multimodal calls for both required model interactions:
   - Question generation from image input (Prepare image mode).
   - Evaluation from question + ideal answer + recorded audio.
+- Improve Prepare session management UX:
+  - LLM-generated one-line user-friendly session names.
+  - Past Sessions list should not repeat full source text under title.
+  - Session details view on tap (text detail or image carousel).
+  - Session delete action.
 
 ### Required Schema Alignment
 - `Difficulty`: `Easy | Medium | Hard`.
@@ -113,9 +159,15 @@
 
 ### Deliverables
 - Practice screen UX update (session dropdown, question dropdown, random-no-repeat picker).
+- Practice selected-question details card and collapsible past-answers area.
 - Model/repository refactor to schema-aligned field names.
 - Evaluator prompt composer with strictness-specific fragments.
 - Schema JSON embed utility reused by prompt builder.
+- Prepare session UX enhancements:
+  - Session title generation utility using LLM one-liner response + timestamp-safe identity.
+  - Session list card compaction (title-only/short metadata).
+  - Session details screen/modal with text/image source rendering.
+  - Delete session action + confirmation + state refresh.
 - Google GenAI SDK integration deliverables:
   - Shared `GenAIClient` wrapper around `GoogleGenAI`.
   - Multimodal question generation request builder:
@@ -127,19 +179,36 @@
 
 ### Visible UI Test
 - Select session in Practice and verify question dropdown updates accordingly.
+- Verify session and question selectors render as dropdown controls (not row-chip lists).
+- Verify dropdown option labels are concise one-liners for sessions/questions.
 - Click random picker repeatedly and confirm no repeated questions until full cycle completion.
 - Switch session and confirm picker state is isolated per selected session.
+- After selecting a question, verify full question details + metadata are shown in details panel.
+- Expand/collapse past answers section and verify prior attempts are shown/hidden correctly.
 - Record and submit attempts; verify saved session JSON uses schema-matching field names.
+- Generate session from long text; verify displayed title is a one-liner and not the whole prompt text.
+- Tap session row:
+  - text mode: source text is visible in details view.
+  - image mode: selected images render in a carousel.
+- Delete a session and verify it disappears immediately and remains deleted after app restart.
 
 ### Automated Tests
 - Session-to-question filtering tests.
+- Dropdown selector rendering and selection tests.
 - Random question no-repeat cycle tests.
+- Selected-question details rendering tests.
+- Collapsible past-answers visibility tests.
 - Schema shape validation tests (generated/evaluated payloads).
 - Prompt composer tests:
   - Core block always present.
   - Correct strictness fragment selected.
   - Profile text appended.
   - Schema JSON embedded.
+- Prepare session UX tests:
+  - Session title derived from one-liner naming output.
+  - Session list does not render full source text body inline.
+  - Session details routing + content mode (text vs image carousel).
+  - Session delete flow and persistence.
 
 ### Automated Test Cases (Detailed)
 1. `practice_session_dropdown_lists_sessions`
@@ -188,6 +257,28 @@
 - Assert non-JSON model text fails parsing and returns typed error.
 23. `genai_response_parser_accepts_schema_conformant_json`
 - Assert valid JSON is accepted and mapped into schema-aligned domain model.
+24. `prepare_session_title_uses_one_liner_name`
+- For long text input, ensure generated session title is a concise one-liner string.
+25. `prepare_session_list_hides_full_source_text`
+- Assert long source text is not shown inline in Past Sessions rows.
+26. `prepare_session_details_text_mode_shows_source_text`
+- Tap text-mode session and assert source text is visible in details view.
+27. `prepare_session_details_image_mode_shows_carousel`
+- Tap image-mode session and assert carousel renders selected image URIs.
+28. `prepare_delete_session_removes_from_storage_and_ui`
+- Delete from list, assert repository no longer contains session and UI updates immediately.
+29. `practice_session_selector_renders_dropdown_not_chip_list`
+- Assert Practice shows a single session dropdown trigger and opens modal list on tap.
+30. `practice_question_selector_renders_dropdown_not_chip_list`
+- Assert Practice shows a single question dropdown trigger filtered by selected session.
+31. `practice_dropdown_labels_are_user_friendly_one_liners`
+- Assert visible selector labels are single-line previews and not full multi-line payload text.
+32. `practice_selected_question_details_shows_full_question_and_metadata`
+- Select question and assert full value/category/difficulty/expected-answer fields render.
+33. `practice_past_answers_collapsible_toggles_visibility`
+- Toggle collapsible and assert attempt rows appear/disappear without losing state.
+34. `practice_question_change_resets_collapsible_state`
+- Open past answers, change question, assert collapsible resets to default collapsed state.
 
 ---
 

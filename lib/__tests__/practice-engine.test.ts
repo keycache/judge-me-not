@@ -11,10 +11,10 @@ describe('practice engine', () => {
   it('creates deterministic evaluation payload', () => {
     const evaluation = evaluateTranscript('I would optimize rendering using memoization and list virtualization.');
 
-    expect(evaluation.scoreOutOfTen).toBeGreaterThan(0);
-    expect(evaluation.scoreOutOfTen).toBeLessThanOrEqual(10);
-    expect(evaluation.summary.length).toBeGreaterThan(0);
-    expect(Array.isArray(evaluation.strengths)).toBe(true);
-    expect(Array.isArray(evaluation.improvements)).toBe(true);
+    expect(evaluation.score).toBeGreaterThan(0);
+    expect(evaluation.score).toBeLessThanOrEqual(10);
+    expect(evaluation.feedback.length).toBeGreaterThan(0);
+    expect(Array.isArray(evaluation.gaps_identified)).toBe(true);
+    expect(evaluation.candidate_answer.length).toBeGreaterThan(0);
   });
 });

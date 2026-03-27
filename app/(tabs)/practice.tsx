@@ -4,14 +4,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as Network from 'expo-network';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { AppInput } from '@/components/ui/app-input';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppTheme } from '@/constants/app-theme';
-import { Answer } from '@/lib/domain/interview-models';
+import { Answer, buildQuestionValueKey } from '@/lib/domain/interview-models';
 import { DEFAULT_APP_SETTINGS, Session } from '@/lib/domain/session-models';
 import { enforceRecordingLimit } from '@/lib/practice-engine';
 import {
@@ -25,12 +25,69 @@ import {
 import { listSessions } from '@/lib/repositories/session-repository';
 import { getAppSettings } from '@/lib/repositories/settings-repository';
 
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function toOneLinePreview(input: string, maxLength = 64): string {
+  const normalized = input.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+interface DropdownOption {
+  key: string;
+  label: string;
+}
+
+interface SelectorDropdownProps {
+  visible: boolean;
+  title: string;
+  options: DropdownOption[];
+  selectedKey: string | null;
+  onSelect: (key: string) => void;
+  onClose: () => void;
+}
+
+function SelectorDropdown({ visible, title, options, selectedKey, onSelect, onClose }: SelectorDropdownProps) {
+  return (
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
+      <Pressable style={styles.dropdownBackdrop} onPress={onClose} testID={`practice-dropdown-backdrop-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+        <View style={styles.dropdownPanel}>
+          <Text style={styles.dropdownTitle} testID={`practice-dropdown-title-${title.replace(/\s+/g, '-').toLowerCase()}`}>{title}</Text>
+          <ScrollView style={styles.dropdownList}>
+            {options.map((option) => {
+              const selected = option.key === selectedKey;
+              return (
+                <Pressable
+                  key={option.key}
+                  testID={`practice-dropdown-option-${option.key}`}
+                  onPress={() => {
+                    onSelect(option.key);
+                    onClose();
+                  }}
+                  style={[styles.dropdownRow, selected ? styles.dropdownRowSelected : null]}>
+                  <Text style={[styles.dropdownText, selected ? styles.dropdownTextSelected : null]}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export default function PracticeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const contentBottomPadding = tabBarHeight;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [activeQuestionValueKey, setActiveQuestionValueKey] = useState<string | null>(null);
+  const [randomCycleBySession, setRandomCycleBySession] = useState<Record<string, string[]>>({});
   const [attempts, setAttempts] = useState<Answer[]>([]);
   const [transcriptDraft, setTranscriptDraft] = useState('');
   const [status, setStatus] = useState('');
@@ -40,12 +97,16 @@ export default function PracticeScreen() {
   const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingCompositeKeys, setPendingCompositeKeys] = useState<Set<string>>(new Set());
   const [micLevel, setMicLevel] = useState(0);
   const [micDb, setMicDb] = useState<number | null>(null);
-  const [activePlaybackAttemptId, setActivePlaybackAttemptId] = useState<string | null>(null);
+  const [activePlaybackAttemptTimestamp, setActivePlaybackAttemptTimestamp] = useState<string | null>(null);
   const [playbackPositionMillis, setPlaybackPositionMillis] = useState(0);
   const [playbackDurationMillis, setPlaybackDurationMillis] = useState(0);
   const [isPlaybackActive, setIsPlaybackActive] = useState(false);
+  const [isSessionDropdownOpen, setIsSessionDropdownOpen] = useState(false);
+  const [isQuestionDropdownOpen, setIsQuestionDropdownOpen] = useState(false);
+  const [showPastAnswers, setShowPastAnswers] = useState(false);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -72,13 +133,43 @@ export default function PracticeScreen() {
     [activeSessionId, sessions]
   );
 
+  const activeQuestions = useMemo(() => activeSession?.questionList.questions ?? [], [activeSession]);
+
   const activeQuestion = useMemo(() => {
-    if (!activeSession || activeSession.questionList.questions.length === 0) {
+    if (!activeQuestionValueKey) {
       return null;
     }
 
-    return activeSession.questionList.questions[Math.min(activeQuestionIndex, activeSession.questionList.questions.length - 1)] ?? null;
-  }, [activeQuestionIndex, activeSession]);
+    return activeQuestions.find((question) => buildQuestionValueKey(question) === activeQuestionValueKey) ?? null;
+  }, [activeQuestionValueKey, activeQuestions]);
+
+  const sessionDropdownOptions = useMemo(
+    () =>
+      sessions.map((session) => ({
+        key: session.id,
+        label: toOneLinePreview(session.title, 72),
+      })),
+    [sessions]
+  );
+
+  const questionDropdownOptions = useMemo(
+    () =>
+      activeQuestions.map((question) => ({
+        key: buildQuestionValueKey(question),
+        label: toOneLinePreview(question.value, 96),
+      })),
+    [activeQuestions]
+  );
+
+  const getAttemptCompositeKey = useCallback(
+    (attempt: Answer) => `${activeSessionId ?? ''}::${activeQuestionValueKey ?? ''}::${attempt.timestamp}`,
+    [activeQuestionValueKey, activeSessionId]
+  );
+
+  const isAttemptPending = useCallback(
+    (attempt: Answer) => pendingCompositeKeys.has(getAttemptCompositeKey(attempt)),
+    [getAttemptCompositeKey, pendingCompositeKeys]
+  );
 
   const refreshAttempts = useCallback(async () => {
     if (!activeSession || !activeQuestion) {
@@ -86,13 +177,19 @@ export default function PracticeScreen() {
       return;
     }
 
-    const nextAttempts = await listAttempts(activeSession.id, activeQuestion.id);
+    const nextAttempts = await listAttempts(activeSession.id, buildQuestionValueKey(activeQuestion));
     setAttempts(nextAttempts);
   }, [activeQuestion, activeSession]);
 
   const refreshPendingCount = useCallback(async () => {
     const items = await listPendingEvaluations();
     setPendingCount(items.length);
+
+    const next = new Set<string>();
+    for (const item of items) {
+      next.add(`${item.sessionId}::${item.questionValueKey}::${item.answerTimestamp}`);
+    }
+    setPendingCompositeKeys(next);
   }, []);
 
   const reloadPracticeState = useCallback(async () => {
@@ -100,11 +197,31 @@ export default function PracticeScreen() {
     setSessions(nextSessions);
     setRecordingLimitSeconds(settings.recordingLimitSeconds);
 
-    if (!activeSessionId && nextSessions.length > 0) {
-      setActiveSessionId(nextSessions[0].id);
-      setActiveQuestionIndex(0);
+    const nextSessionId =
+      activeSessionId && nextSessions.some((session) => session.id === activeSessionId)
+        ? activeSessionId
+        : nextSessions[0]?.id ?? null;
+    setActiveSessionId(nextSessionId);
+
+    if (!nextSessionId) {
+      setActiveQuestionValueKey(null);
+      return;
     }
-  }, [activeSessionId]);
+
+    const nextSession = nextSessions.find((session) => session.id === nextSessionId);
+    if (!nextSession || nextSession.questionList.questions.length === 0) {
+      setActiveQuestionValueKey(null);
+      return;
+    }
+
+    const currentIsValid = nextSession.questionList.questions.some(
+      (question) => buildQuestionValueKey(question) === activeQuestionValueKey
+    );
+
+    if (!currentIsValid) {
+      setActiveQuestionValueKey(buildQuestionValueKey(nextSession.questionList.questions[0]));
+    }
+  }, [activeQuestionValueKey, activeSessionId]);
 
   useEffect(() => {
     void reloadPracticeState();
@@ -135,8 +252,8 @@ export default function PracticeScreen() {
 
     void hydrateNetwork();
 
-    const subscription = Network.addNetworkStateListener((state) => {
-      setIsOnline(Boolean(state.isConnected));
+    const subscription = Network.addNetworkStateListener((nextState) => {
+      setIsOnline(Boolean(nextState.isConnected));
     });
 
     return () => {
@@ -232,14 +349,11 @@ export default function PracticeScreen() {
       return;
     }
 
-    const transcript = transcriptDraft.trim() || `Attempt recorded at ${new Date().toLocaleTimeString()}`;
-
     await appendAttempt({
       sessionId: activeSession.id,
-      questionId: activeQuestion.id,
-      transcript,
-      audioFileUri: uri,
-      durationSeconds: recordingSeconds,
+      questionValueKey: buildQuestionValueKey(activeQuestion),
+      transcript: transcriptDraft.trim() || `Attempt recorded at ${new Date().toLocaleTimeString()}`,
+      audioFilePath: uri,
     });
 
     setLastRecordingUri(uri);
@@ -279,7 +393,7 @@ export default function PracticeScreen() {
     if (soundRef.current) {
       await soundRef.current.unloadAsync();
       soundRef.current = null;
-      setActivePlaybackAttemptId(null);
+      setActivePlaybackAttemptTimestamp(null);
       setPlaybackPositionMillis(0);
       setPlaybackDurationMillis(0);
       setIsPlaybackActive(false);
@@ -324,6 +438,7 @@ export default function PracticeScreen() {
     loopbackWarnedRef.current = false;
     setIsRecording(true);
     setStatus(`Recording... cap ${recordingLimitSeconds}s.`);
+
     if (useMetering) {
       recording.setOnRecordingStatusUpdate((nextStatus) => {
         if (!nextStatus.isRecording || typeof nextStatus.metering !== 'number') {
@@ -334,7 +449,6 @@ export default function PracticeScreen() {
         setMicDb(db);
         lastMeterDurationMsRef.current = nextStatus.durationMillis;
 
-        // A sustained near-0 dB reading in emulator usually indicates loopback/synthetic input.
         if (db > -2) {
           saturatedCountRef.current += 1;
           setMicLevel((previous) => previous * 0.8 + 0.2 * 0.2);
@@ -342,7 +456,6 @@ export default function PracticeScreen() {
             loopbackWarnedRef.current = true;
           }
 
-          // If saturation persists, stop and discard this recording to avoid saving beep artifacts.
           if (
             !hadUsableMicInputRef.current &&
             nextStatus.durationMillis >= 2500 &&
@@ -367,6 +480,7 @@ export default function PracticeScreen() {
         } else {
           usableSampleStreakRef.current = 0;
         }
+
         loopbackWarnedRef.current = false;
         const floorDb = -60;
         const ceilDb = -10;
@@ -388,15 +502,17 @@ export default function PracticeScreen() {
   }, [activeQuestion, activeSession, recordingLimitSeconds, stopRecording, useMetering]);
 
   const onSubmitAttempt = useCallback(
-    async (answerId: string) => {
+    async (attempt: Answer) => {
       if (!activeSession || !activeQuestion) {
         return;
       }
 
+      const fallbackTranscript = transcriptDraft.trim() || `Recorded answer at ${attempt.timestamp}`;
       const result = await submitAttemptForEvaluation({
         sessionId: activeSession.id,
-        questionId: activeQuestion.id,
-        answerId,
+        questionValueKey: buildQuestionValueKey(activeQuestion),
+        answerTimestamp: attempt.timestamp,
+        transcript: fallbackTranscript,
         isOnline,
       });
 
@@ -404,82 +520,88 @@ export default function PracticeScreen() {
       await refreshAttempts();
       await refreshPendingCount();
     },
-    [activeQuestion, activeSession, isOnline, refreshAttempts, refreshPendingCount]
+    [activeQuestion, activeSession, isOnline, refreshAttempts, refreshPendingCount, transcriptDraft]
   );
 
-  const onToggleAttemptPlayback = useCallback(async (attemptId: string, uri: string | null) => {
-    if (!uri) {
-      setStatus('No local recording for this attempt.');
-      return;
-    }
-
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-    });
-
-    if (activePlaybackAttemptId === attemptId && soundRef.current) {
-      const currentStatus = await soundRef.current.getStatusAsync();
-      if (currentStatus.isLoaded && currentStatus.isPlaying) {
-        await soundRef.current.pauseAsync();
-        setStatus('Playback paused.');
+  const onToggleAttemptPlayback = useCallback(
+    async (attemptTimestamp: string, uri: string | null) => {
+      if (!uri) {
+        setStatus('No local recording for this attempt.');
         return;
       }
 
-      if (currentStatus.isLoaded) {
-        await soundRef.current.playAsync();
-        setStatus('Playing local recording.');
-        return;
-      }
-    }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
 
-    if (soundRef.current) {
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
-    }
-
-    const { sound, status: initialStatus } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true },
-      (nextStatus) => {
-        if (!nextStatus.isLoaded) {
+      if (activePlaybackAttemptTimestamp === attemptTimestamp && soundRef.current) {
+        const currentStatus = await soundRef.current.getStatusAsync();
+        if (currentStatus.isLoaded && currentStatus.isPlaying) {
+          await soundRef.current.pauseAsync();
+          setStatus('Playback paused.');
           return;
         }
 
-        setPlaybackPositionMillis(nextStatus.positionMillis);
-        setPlaybackDurationMillis(nextStatus.durationMillis ?? 0);
-        setIsPlaybackActive(nextStatus.isPlaying);
-
-        if (nextStatus.didJustFinish) {
-          setIsPlaybackActive(false);
-          setPlaybackPositionMillis(0);
-          setStatus('Playback finished.');
+        if (currentStatus.isLoaded) {
+          await soundRef.current.playAsync();
+          setStatus('Playing local recording.');
+          return;
         }
       }
-    );
 
-    soundRef.current = sound;
-    setActivePlaybackAttemptId(attemptId);
-    setPlaybackPositionMillis(initialStatus.isLoaded ? initialStatus.positionMillis : 0);
-    setPlaybackDurationMillis(initialStatus.isLoaded ? (initialStatus.durationMillis ?? 0) : 0);
-    setIsPlaybackActive(true);
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
 
-    if (initialStatus.isLoaded && initialStatus.durationMillis && initialStatus.durationMillis > 0) {
-      setStatus(`Playing local recording (${formatMillis(initialStatus.durationMillis)}).`);
-      return;
-    }
+      const { sound, status: initialStatus } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true },
+        (nextStatus) => {
+          if (!nextStatus.isLoaded) {
+            return;
+          }
 
-    setStatus('Playing local recording.');
-  }, [activePlaybackAttemptId, formatMillis]);
+          setPlaybackPositionMillis(nextStatus.positionMillis);
+          setPlaybackDurationMillis(nextStatus.durationMillis ?? 0);
+          setIsPlaybackActive(nextStatus.isPlaying);
 
-  const onSeekPlayback = useCallback(async (value: number) => {
-    if (!soundRef.current || activePlaybackAttemptId === null) {
-      return;
-    }
+          if (nextStatus.didJustFinish) {
+            setIsPlaybackActive(false);
+            setPlaybackPositionMillis(0);
+            setStatus('Playback finished.');
+          }
+        }
+      );
 
-    await soundRef.current.setPositionAsync(Math.floor(value));
-    setPlaybackPositionMillis(Math.floor(value));
-  }, [activePlaybackAttemptId]);
+      soundRef.current = sound;
+      setActivePlaybackAttemptTimestamp(attemptTimestamp);
+      setPlaybackPositionMillis(initialStatus.isLoaded ? initialStatus.positionMillis : 0);
+      setPlaybackDurationMillis(initialStatus.isLoaded ? (initialStatus.durationMillis ?? 0) : 0);
+      setIsPlaybackActive(true);
+
+      if (initialStatus.isLoaded && initialStatus.durationMillis && initialStatus.durationMillis > 0) {
+        setStatus(`Playing local recording (${formatMillis(initialStatus.durationMillis)}).`);
+        return;
+      }
+
+      setStatus('Playing local recording.');
+    },
+    [activePlaybackAttemptTimestamp, formatMillis]
+  );
+
+  const onSeekPlayback = useCallback(
+    async (value: number) => {
+      if (!soundRef.current || activePlaybackAttemptTimestamp === null) {
+        return;
+      }
+
+      await soundRef.current.setPositionAsync(Math.floor(value));
+      setPlaybackPositionMillis(Math.floor(value));
+    },
+    [activePlaybackAttemptTimestamp]
+  );
 
   const onToggleRecording = useCallback(() => {
     if (isRecording) {
@@ -496,15 +618,15 @@ export default function PracticeScreen() {
         return;
       }
 
-      if (attempt.submittedAtIso) {
+      if (attempt.evaluation || isAttemptPending(attempt)) {
         setStatus('Only non-submitted attempts can be deleted.');
         return;
       }
 
       const wasDeleted = await deleteAttempt({
         sessionId: activeSession.id,
-        questionId: activeQuestion.id,
-        answerId: attempt.id,
+        questionValueKey: buildQuestionValueKey(activeQuestion),
+        answerTimestamp: attempt.timestamp,
       });
 
       if (!wasDeleted) {
@@ -512,10 +634,10 @@ export default function PracticeScreen() {
         return;
       }
 
-      if (activePlaybackAttemptId === attempt.id && soundRef.current) {
+      if (activePlaybackAttemptTimestamp === attempt.timestamp && soundRef.current) {
         await soundRef.current.unloadAsync();
         soundRef.current = null;
-        setActivePlaybackAttemptId(null);
+        setActivePlaybackAttemptTimestamp(null);
         setPlaybackPositionMillis(0);
         setPlaybackDurationMillis(0);
         setIsPlaybackActive(false);
@@ -525,13 +647,51 @@ export default function PracticeScreen() {
       await refreshAttempts();
       await refreshPendingCount();
     },
-    [activePlaybackAttemptId, activeQuestion, activeSession, refreshAttempts, refreshPendingCount]
+    [
+      activePlaybackAttemptTimestamp,
+      activeQuestion,
+      activeSession,
+      isAttemptPending,
+      refreshAttempts,
+      refreshPendingCount,
+    ]
   );
 
   const onSelectSession = useCallback((sessionId: string) => {
+    const nextSession = sessions.find((session) => session.id === sessionId);
     setActiveSessionId(sessionId);
-    setActiveQuestionIndex(0);
+    setActiveQuestionValueKey(nextSession?.questionList.questions[0] ? buildQuestionValueKey(nextSession.questionList.questions[0]) : null);
+    setShowPastAnswers(false);
+  }, [sessions]);
+
+  const onSelectQuestion = useCallback((questionValueKey: string) => {
+    setActiveQuestionValueKey(questionValueKey);
+    setShowPastAnswers(false);
   }, []);
+
+  const onPickRandomQuestion = useCallback(() => {
+    if (!activeSession || activeSession.questionList.questions.length === 0) {
+      return;
+    }
+
+    const sessionQuestionKeys = activeSession.questionList.questions.map((question) => buildQuestionValueKey(question));
+    const usedForSession = randomCycleBySession[activeSession.id] ?? [];
+
+    const remaining = sessionQuestionKeys.filter((key) => !usedForSession.includes(key));
+    const cyclePool = remaining.length > 0 ? remaining : sessionQuestionKeys;
+    const nextQuestionKey = pickRandom(cyclePool);
+
+    setActiveQuestionValueKey(nextQuestionKey);
+
+    setRandomCycleBySession((current) => {
+      const existingUsed = current[activeSession.id] ?? [];
+      const nextUsed = remaining.length > 0 ? [...existingUsed, nextQuestionKey] : [nextQuestionKey];
+      return {
+        ...current,
+        [activeSession.id]: nextUsed,
+      };
+    });
+  }, [activeSession, randomCycleBySession]);
 
   return (
     <AppScreen
@@ -539,6 +699,118 @@ export default function PracticeScreen() {
       subtitle="Run mock interview questions and capture answer attempts with recording controls."
       excludeBottomSafeArea
       contentBottomPadding={contentBottomPadding}>
+      <AppCard title="Session + Question Selection">
+        {sessions.length === 0 ? <Text style={styles.bodyText}>No sessions available.</Text> : null}
+        <Text style={styles.metaText}>Session</Text>
+        <Pressable testID="practice-session-dropdown-trigger" style={styles.dropdownTrigger} onPress={() => setIsSessionDropdownOpen(true)}>
+          <Text style={styles.dropdownTriggerText}>
+            {activeSession ? toOneLinePreview(activeSession.title, 72) : 'Select a session'}
+          </Text>
+          <Text style={styles.dropdownCaret}>v</Text>
+        </Pressable>
+
+        <Text style={styles.metaText}>Question</Text>
+        <Pressable
+          testID="practice-question-dropdown-trigger"
+          style={styles.dropdownTrigger}
+          onPress={() => setIsQuestionDropdownOpen(true)}
+          disabled={!activeSession || questionDropdownOptions.length === 0}>
+          <Text style={styles.dropdownTriggerText}>
+            {activeQuestion ? toOneLinePreview(activeQuestion.value, 96) : 'Select a question'}
+          </Text>
+          <Text style={styles.dropdownCaret}>v</Text>
+        </Pressable>
+
+        <AppButton label="Pick Random Question" onPress={onPickRandomQuestion} variant="ghost" />
+      </AppCard>
+
+      <SelectorDropdown
+        visible={isSessionDropdownOpen}
+        title="Select Session"
+        options={sessionDropdownOptions}
+        selectedKey={activeSessionId}
+        onSelect={onSelectSession}
+        onClose={() => setIsSessionDropdownOpen(false)}
+      />
+
+      <SelectorDropdown
+        visible={isQuestionDropdownOpen}
+        title="Select Question"
+        options={questionDropdownOptions}
+        selectedKey={activeQuestionValueKey}
+        onSelect={onSelectQuestion}
+        onClose={() => setIsQuestionDropdownOpen(false)}
+      />
+
+      <AppCard title="Selected Question Details">
+        {activeQuestion ? (
+          <>
+            <View style={styles.questionCard} testID="practice-selected-question-details">
+              <Text style={styles.questionTitle}>{activeSession?.title}</Text>
+              <Text style={styles.questionPrompt} testID="practice-selected-question-full-text">{activeQuestion.value}</Text>
+              <Text style={styles.metaText}>Category: {activeQuestion.category}</Text>
+              <Text style={styles.metaText}>Difficulty: {activeQuestion.difficulty}</Text>
+              <Text style={styles.metaText}>Expected answer focus: {activeQuestion.answer}</Text>
+            </View>
+
+            <Pressable testID="practice-past-answers-toggle" style={styles.collapsibleHeader} onPress={() => setShowPastAnswers((value) => !value)}>
+              <Text style={styles.questionTitle}>Past Answers ({attempts.length})</Text>
+              <Text style={styles.metaText}>{showPastAnswers ? 'Hide' : 'Show'}</Text>
+            </Pressable>
+
+            {showPastAnswers ? (
+              <View style={styles.collapsibleBody} testID="practice-past-answers-content">
+                {attempts.length === 0 ? <Text style={styles.bodyText}>No attempts yet for this question.</Text> : null}
+                {attempts.map((attempt) => {
+                  const isPending = isAttemptPending(attempt);
+                  const isSubmitted = Boolean(attempt.evaluation) || isPending;
+                  const attemptStatus = attempt.evaluation ? 'completed' : isPending ? 'pending' : 'draft';
+
+                  return (
+                    <View key={attempt.timestamp} style={styles.attemptRow}>
+                      <Text style={styles.bodyText}>{attempt.timestamp}</Text>
+                      <Text style={styles.metaText}>Status: {attemptStatus}</Text>
+                      <Text style={styles.bodyText}>Audio: {attempt.audio_file_path}</Text>
+                      {attempt.evaluation ? <Text style={styles.metaText}>Score: {attempt.evaluation.score}/10</Text> : null}
+                      <View style={styles.buttonRow}>
+                        {!isSubmitted ? <AppButton label="Submit" onPress={() => onSubmitAttempt(attempt)} /> : null}
+                        <AppButton
+                          label={activePlaybackAttemptTimestamp === attempt.timestamp && isPlaybackActive ? 'Pause' : 'Play'}
+                          onPress={() => onToggleAttemptPlayback(attempt.timestamp, attempt.audio_file_path)}
+                          variant="ghost"
+                        />
+                        {!isSubmitted ? (
+                          <AppButton label="Delete" onPress={() => onDeleteAttempt(attempt)} variant="ghost" />
+                        ) : null}
+                      </View>
+                      {activePlaybackAttemptTimestamp === attempt.timestamp ? (
+                        <View style={styles.playbackPanel}>
+                          <Slider
+                            minimumValue={0}
+                            maximumValue={Math.max(playbackDurationMillis, 1)}
+                            value={Math.min(playbackPositionMillis, Math.max(playbackDurationMillis, 1))}
+                            onSlidingComplete={onSeekPlayback}
+                            minimumTrackTintColor={AppTheme.colors.accent}
+                            maximumTrackTintColor={AppTheme.colors.borderStrong}
+                            thumbTintColor={AppTheme.colors.accent}
+                          />
+                          <View style={styles.playbackTimesRow}>
+                            <Text style={styles.metaText}>{formatMillis(playbackPositionMillis)}</Text>
+                            <Text style={styles.metaText}>{formatMillis(playbackDurationMillis)}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <Text style={styles.bodyText}>Select a question to view full details and past answers.</Text>
+        )}
+      </AppCard>
+
       <AppCard title="Question Runner">
         <Text style={styles.bodyText}>Network: {isOnline ? 'Online' : 'Offline'}</Text>
         <Text style={styles.bodyText}>Pending Evaluations: {pendingCount}</Text>
@@ -551,11 +823,12 @@ export default function PracticeScreen() {
           </View>
           <Text style={styles.metaText}>{micDb !== null ? `${Math.round(micDb)} dB` : 'n/a'}</Text>
         </View>
+
         <AppInput
           multiline
           numberOfLines={3}
           onChangeText={setTranscriptDraft}
-          placeholder="Optional transcript notes for this spoken attempt"
+          placeholder="Optional notes used as candidate answer text when submitting"
           value={transcriptDraft}
         />
 
@@ -568,67 +841,9 @@ export default function PracticeScreen() {
         <Text style={styles.bodyText}>Recording Seconds: {recordingSeconds}</Text>
         {lastRecordingUri ? <Text style={styles.metaText}>Last local audio: {lastRecordingUri}</Text> : null}
 
-        {activeSession && activeQuestion ? (
-          <View style={styles.questionCard}>
-            <Text style={styles.questionTitle}>{activeSession.title}</Text>
-            <Text style={styles.questionPrompt}>{activeQuestion.prompt}</Text>
-          </View>
-        ) : (
-          <Text style={styles.bodyText}>No session/questions available. Generate one from Prepare first.</Text>
-        )}
+        {!activeSession || !activeQuestion ? <Text style={styles.bodyText}>No session/questions available. Generate one from Prepare first.</Text> : null}
 
         {status ? <Text style={styles.statusText}>{status}</Text> : null}
-      </AppCard>
-
-      <AppCard title="Attempt History">
-        {attempts.length === 0 ? <Text style={styles.bodyText}>No attempts yet for this question.</Text> : null}
-        {attempts.map((attempt) => (
-          <View key={attempt.id} style={styles.attemptRow}>
-            <Text style={styles.bodyText}>{attempt.createdAtIso}</Text>
-            <Text style={styles.metaText}>Status: {attempt.evaluationStatus ?? 'draft'}</Text>
-            <Text style={styles.metaText}>Recorded: {attempt.durationSeconds}s</Text>
-            <Text style={styles.bodyText}>{attempt.transcript}</Text>
-            {attempt.evaluation ? <Text style={styles.metaText}>Score: {attempt.evaluation.scoreOutOfTen}/10</Text> : null}
-            <View style={styles.buttonRow}>
-              {!attempt.submittedAtIso ? <AppButton label="Submit" onPress={() => onSubmitAttempt(attempt.id)} /> : null}
-              <AppButton
-                label={activePlaybackAttemptId === attempt.id && isPlaybackActive ? 'Pause' : 'Play'}
-                onPress={() => onToggleAttemptPlayback(attempt.id, attempt.audioFileUri)}
-                variant="ghost"
-              />
-              {!attempt.submittedAtIso ? (
-                <AppButton label="Delete" onPress={() => onDeleteAttempt(attempt)} variant="ghost" />
-              ) : null}
-            </View>
-            {activePlaybackAttemptId === attempt.id ? (
-              <View style={styles.playbackPanel}>
-                <Slider
-                  minimumValue={0}
-                  maximumValue={Math.max(playbackDurationMillis, 1)}
-                  value={Math.min(playbackPositionMillis, Math.max(playbackDurationMillis, 1))}
-                  onSlidingComplete={onSeekPlayback}
-                  minimumTrackTintColor={AppTheme.colors.accent}
-                  maximumTrackTintColor={AppTheme.colors.borderStrong}
-                  thumbTintColor={AppTheme.colors.accent}
-                />
-                <View style={styles.playbackTimesRow}>
-                  <Text style={styles.metaText}>{formatMillis(playbackPositionMillis)}</Text>
-                  <Text style={styles.metaText}>{formatMillis(playbackDurationMillis)}</Text>
-                </View>
-              </View>
-            ) : null}
-          </View>
-        ))}
-      </AppCard>
-
-      <AppCard title="Sessions">
-        {sessions.length === 0 ? <Text style={styles.bodyText}>No sessions available.</Text> : null}
-        {sessions.map((session) => (
-          <Pressable key={session.id} onPress={() => onSelectSession(session.id)} style={styles.sessionRow}>
-            <Text style={styles.questionTitle}>{session.title}</Text>
-            <Text style={styles.metaText}>{session.questionList.questions.length} questions</Text>
-          </Pressable>
-        ))}
       </AppCard>
     </AppScreen>
   );
@@ -655,12 +870,110 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: AppTheme.spacing.sm,
   },
+  dropdownTrigger: {
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    paddingHorizontal: AppTheme.spacing.sm,
+    paddingVertical: AppTheme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: AppTheme.spacing.sm,
+  },
+  dropdownTriggerText: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.bodyFamily,
+    fontSize: 14,
+    flex: 1,
+  },
+  dropdownCaret: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 12,
+  },
+  dropdownBackdrop: {
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: AppTheme.spacing.md,
+  },
+  dropdownPanel: {
+    backgroundColor: AppTheme.colors.surfacePrimary,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    maxHeight: '70%',
+    padding: AppTheme.spacing.sm,
+    gap: AppTheme.spacing.sm,
+  },
+  dropdownTitle: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 16,
+    textTransform: 'uppercase',
+  },
+  dropdownList: {
+    maxHeight: 420,
+  },
+  dropdownRow: {
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    paddingHorizontal: AppTheme.spacing.sm,
+    paddingVertical: AppTheme.spacing.sm,
+  },
+  dropdownRowSelected: {
+    borderColor: AppTheme.colors.accent,
+  },
+  dropdownText: {
+    color: AppTheme.colors.textSecondary,
+    fontFamily: AppTheme.typography.bodyFamily,
+    fontSize: 14,
+  },
+  dropdownTextSelected: {
+    color: AppTheme.colors.textPrimary,
+  },
+  selectorWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: AppTheme.spacing.xs,
+  },
+  choiceChip: {
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    paddingHorizontal: AppTheme.spacing.sm,
+    paddingVertical: AppTheme.spacing.xs,
+  },
+  choiceChipSelected: {
+    borderColor: AppTheme.colors.accent,
+  },
+  choiceText: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.bodyFamily,
+    fontSize: 12,
+  },
+  choiceTextSelected: {
+    color: AppTheme.colors.textPrimary,
+  },
   questionCard: {
     borderWidth: 1,
     borderColor: AppTheme.colors.borderStrong,
     backgroundColor: AppTheme.colors.surfaceSecondary,
     padding: AppTheme.spacing.md,
     gap: AppTheme.spacing.xs,
+  },
+  collapsibleHeader: {
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    padding: AppTheme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  collapsibleBody: {
+    gap: AppTheme.spacing.sm,
   },
   questionTitle: {
     color: AppTheme.colors.textPrimary,
@@ -675,13 +988,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   attemptRow: {
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderSubtle,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-    padding: AppTheme.spacing.sm,
-    gap: AppTheme.spacing.xs,
-  },
-  sessionRow: {
     borderWidth: 1,
     borderColor: AppTheme.colors.borderSubtle,
     backgroundColor: AppTheme.colors.surfaceSecondary,

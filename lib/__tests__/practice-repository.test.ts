@@ -1,8 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { appendAttempt, listAttempts, listPendingEvaluations, processPendingEvaluations, submitAttemptForEvaluation } from '@/lib/repositories/practice-repository';
+import { buildQuestionValueKey } from '@/lib/domain/interview-models';
 import { createSessionFromQuestionList, getSessionById, saveSession } from '@/lib/repositories/session-repository';
 import { __resetJsonStorageForTests } from '@/lib/storage/json-storage';
+import {
+    appendAttempt,
+    listAttempts,
+    listPendingEvaluations,
+    processPendingEvaluations,
+    submitAttemptForEvaluation,
+} from '../repositories/practice-repository';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -15,15 +22,12 @@ const backingStore = new Map<string, string>();
 
 function buildSessionQuestionList() {
   return {
-    id: 'ql-practice',
-    title: 'Practice Questions',
-    roleDescription: 'React Native role',
-    createdAtIso: '2026-03-26T12:00:00.000Z',
     questions: [
       {
-        id: 'q-1',
-        prompt: 'Tell me about a difficult debugging incident.',
+        value: 'Tell me about a difficult debugging incident.',
+        category: 'Practice Questions',
         difficulty: 'Medium' as const,
+        answer: 'Use STAR with root cause analysis and measurable outcome.',
         answers: [],
       },
     ],
@@ -56,30 +60,32 @@ describe('practice repository', () => {
     return session;
   }
 
+  function getQuestionValueKey() {
+    return buildQuestionValueKey(buildSessionQuestionList().questions[0]);
+  }
+
   it('appends attempts without overwriting existing ones', async () => {
     const session = await createSession();
 
     const first = await appendAttempt({
       sessionId: session.id,
-      questionId: 'q-1',
+      questionValueKey: getQuestionValueKey(),
       transcript: 'First answer',
-      audioFileUri: 'file:///attempt-1.m4a',
-      durationSeconds: 21,
+      audioFilePath: 'file:///attempt-1.m4a',
     });
 
     const second = await appendAttempt({
       sessionId: session.id,
-      questionId: 'q-1',
+      questionValueKey: getQuestionValueKey(),
       transcript: 'Second answer',
-      audioFileUri: 'file:///attempt-2.m4a',
-      durationSeconds: 33,
+      audioFilePath: 'file:///attempt-2.m4a',
     });
 
-    const attempts = await listAttempts(session.id, 'q-1');
+    const attempts = await listAttempts(session.id, getQuestionValueKey());
 
     expect(attempts).toHaveLength(2);
-    expect(attempts.map((item) => item.id)).toContain(first.id);
-    expect(attempts.map((item) => item.id)).toContain(second.id);
+    expect(attempts.map((item: { timestamp: string }) => item.timestamp)).toContain(first.timestamp);
+    expect(attempts.map((item: { timestamp: string }) => item.timestamp)).toContain(second.timestamp);
   });
 
   it('queues evaluation when offline then auto-processes on reconnect', async () => {
@@ -87,16 +93,16 @@ describe('practice repository', () => {
 
     const attempt = await appendAttempt({
       sessionId: session.id,
-      questionId: 'q-1',
+      questionValueKey: getQuestionValueKey(),
       transcript: 'Offline submit answer body',
-      audioFileUri: 'file:///attempt-offline.m4a',
-      durationSeconds: 25,
+      audioFilePath: 'file:///attempt-offline.m4a',
     });
 
     const submitResult = await submitAttemptForEvaluation({
       sessionId: session.id,
-      questionId: 'q-1',
-      answerId: attempt.id,
+      questionValueKey: getQuestionValueKey(),
+      answerTimestamp: attempt.timestamp,
+      transcript: 'Offline submit answer body',
       isOnline: false,
     });
 
@@ -108,9 +114,9 @@ describe('practice repository', () => {
     expect((await listPendingEvaluations()).length).toBe(0);
 
     const reloaded = await getSessionById(session.id);
-    const answer = reloaded?.questionList.questions[0].answers.find((item) => item.id === attempt.id);
+    const answer = reloaded?.questionList.questions[0].answers?.find((item) => item.timestamp === attempt.timestamp);
 
-    expect(answer?.evaluationStatus).toBe('completed');
+    expect(answer?.evaluation).toBeDefined();
     expect(answer?.evaluation).not.toBeNull();
   });
 
@@ -119,16 +125,16 @@ describe('practice repository', () => {
 
     const attempt = await appendAttempt({
       sessionId: session.id,
-      questionId: 'q-1',
+      questionValueKey: getQuestionValueKey(),
       transcript: 'Online submit answer body',
-      audioFileUri: 'file:///attempt-online.m4a',
-      durationSeconds: 18,
+      audioFilePath: 'file:///attempt-online.m4a',
     });
 
     const result = await submitAttemptForEvaluation({
       sessionId: session.id,
-      questionId: 'q-1',
-      answerId: attempt.id,
+      questionValueKey: getQuestionValueKey(),
+      answerTimestamp: attempt.timestamp,
+      transcript: 'Online submit answer body',
       isOnline: true,
     });
 
@@ -136,8 +142,8 @@ describe('practice repository', () => {
     expect((await listPendingEvaluations()).length).toBe(0);
 
     const reloaded = await getSessionById(session.id);
-    const answer = reloaded?.questionList.questions[0].answers.find((item) => item.id === attempt.id);
-    expect(answer?.evaluationStatus).toBe('completed');
-    expect(answer?.evaluation?.scoreOutOfTen).toBeGreaterThan(0);
+    const answer = reloaded?.questionList.questions[0].answers?.find((item) => item.timestamp === attempt.timestamp);
+    expect(answer?.evaluation).toBeDefined();
+    expect(answer?.evaluation?.score).toBeGreaterThan(0);
   });
 });

@@ -16,6 +16,12 @@ export interface SessionPromptSnapshot extends PromptSettings {
   resolvedPrompt: string;
 }
 
+export interface SessionSourceContext {
+  inputMode: 'text' | 'image';
+  sourceText?: string;
+  imageUris?: string[];
+}
+
 export interface AudioIndexEntry {
   answerId: string;
   questionId: string;
@@ -31,6 +37,7 @@ export interface Session {
   questionList: QuestionList;
   audioIndex: AudioIndexEntry[];
   promptSnapshot: SessionPromptSnapshot | null;
+  sourceContext?: SessionSourceContext;
 }
 
 export interface AppSettings {

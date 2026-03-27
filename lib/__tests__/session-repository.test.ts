@@ -22,23 +22,16 @@ const backingStore = new Map<string, string>();
 
 function buildQuestionList(): QuestionList {
   return {
-    id: 'question-list-1',
-    title: 'Mobile System Design',
-    roleDescription: 'Senior React Native',
-    createdAtIso: '2026-03-26T12:00:00.000Z',
     questions: [
       {
-        id: 'q-1',
-        prompt: 'How do you optimize bundle size?',
+        value: 'How do you optimize bundle size?',
+        category: 'Mobile System Design',
         difficulty: 'Hard',
+        answer: 'Discuss Hermes, code splitting, dead code elimination, and metrics.',
         answers: [
           {
-            id: 'a-1',
-            questionId: 'q-1',
-            transcript: 'Use Hermes and split bundles where possible.',
-            audioFileUri: 'file:///sessions/audio-a1.m4a',
-            createdAtIso: '2026-03-26T12:10:00.000Z',
-            evaluation: null,
+            audio_file_path: 'file:///sessions/audio-a1.m4a',
+            timestamp: '2026-03-26T12:10:00.000Z',
           },
         ],
       },
@@ -115,6 +108,39 @@ describe('session repository', () => {
       systemPersona: 'Very strict interviewer',
       resolvedPrompt: 'Prompt body v1',
     });
+  });
+
+  it('persists source context for text and image sessions', async () => {
+    const textSession = createSessionFromQuestionList({
+      sessionNameFromModel: 'Text Source Session',
+      questionList: buildQuestionList(),
+      sourceContext: {
+        inputMode: 'text',
+        sourceText: 'Senior mobile engineer role focusing on architecture and delivery.',
+      },
+      createdAt: new Date('2026-03-26T15:35:00.000Z'),
+    });
+
+    const imageSession = createSessionFromQuestionList({
+      sessionNameFromModel: 'Image Source Session',
+      questionList: buildQuestionList(),
+      sourceContext: {
+        inputMode: 'image',
+        imageUris: ['file:///tmp/1.jpg', 'file:///tmp/2.jpg'],
+      },
+      createdAt: new Date('2026-03-26T15:36:00.000Z'),
+    });
+
+    await saveSession(textSession);
+    await saveSession(imageSession);
+
+    const loadedText = await getSessionById(textSession.id);
+    const loadedImage = await getSessionById(imageSession.id);
+
+    expect(loadedText?.sourceContext?.inputMode).toBe('text');
+    expect(loadedText?.sourceContext?.sourceText).toMatch(/architecture/);
+    expect(loadedImage?.sourceContext?.inputMode).toBe('image');
+    expect(loadedImage?.sourceContext?.imageUris).toEqual(['file:///tmp/1.jpg', 'file:///tmp/2.jpg']);
   });
 
   it('returns empty audio file list for missing session id', async () => {

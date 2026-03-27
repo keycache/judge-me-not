@@ -1,5 +1,5 @@
 import { QuestionList } from '@/lib/domain/interview-models';
-import { AudioIndexEntry, Session, SessionPromptSnapshot } from '@/lib/domain/session-models';
+import { AudioIndexEntry, Session, SessionPromptSnapshot, SessionSourceContext } from '@/lib/domain/session-models';
 import { validateSession } from '@/lib/domain/validators';
 import { buildSessionIdentity } from '@/lib/session-identity';
 import { readJsonValue, removeJsonValue, writeJsonValue } from '@/lib/storage/json-storage';
@@ -10,16 +10,16 @@ export function buildAudioIndex(questionList: QuestionList): AudioIndexEntry[] {
   const index: AudioIndexEntry[] = [];
 
   for (const question of questionList.questions) {
-    for (const answer of question.answers) {
-      if (!answer.audioFileUri) {
+    for (const answer of question.answers ?? []) {
+      if (!answer.audio_file_path) {
         continue;
       }
 
       index.push({
-        answerId: answer.id,
-        questionId: question.id,
-        uri: answer.audioFileUri,
-        createdAtIso: answer.createdAtIso,
+        answerId: `${question.value}::${answer.timestamp}`,
+        questionId: question.value,
+        uri: answer.audio_file_path,
+        createdAtIso: answer.timestamp,
       });
     }
   }
@@ -31,6 +31,7 @@ export function createSessionFromQuestionList(input: {
   sessionNameFromModel: string;
   questionList: QuestionList;
   promptSnapshot?: SessionPromptSnapshot | null;
+  sourceContext?: SessionSourceContext;
   createdAt?: Date;
 }): Session {
   const timestamp = input.createdAt ?? new Date();
@@ -45,6 +46,7 @@ export function createSessionFromQuestionList(input: {
     questionList: input.questionList,
     audioIndex: buildAudioIndex(input.questionList),
     promptSnapshot: input.promptSnapshot ?? null,
+    sourceContext: input.sourceContext,
   };
 }
 

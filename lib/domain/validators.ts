@@ -1,4 +1,4 @@
-import { ANSWER_EVALUATION_STATUSES, Answer, Difficulty, Evaluation, Question, QuestionList } from '@/lib/domain/interview-models';
+import { Answer, Difficulty, Evaluation, Question, QuestionList } from '@/lib/domain/interview-models';
 import { EVALUATION_STRICTNESS_LEVELS, MODEL_VARIANTS, Session } from '@/lib/domain/session-models';
 
 export interface ValidationResult {
@@ -17,16 +17,24 @@ export function isDifficulty(input: string): input is Difficulty {
 export function validateEvaluation(evaluation: Evaluation): ValidationResult {
   const errors: string[] = [];
 
-  if (evaluation.scoreOutOfTen < 0 || evaluation.scoreOutOfTen > 10) {
+  if (evaluation.score < 0 || evaluation.score > 10) {
     errors.push('Evaluation score must be in range 0..10.');
   }
 
-  if (!isIsoDate(evaluation.evaluatedAtIso)) {
-    errors.push('Evaluation timestamp must be a valid ISO date string.');
+  if (evaluation.candidate_answer.trim().length === 0) {
+    errors.push('Evaluation candidate_answer is required.');
   }
 
-  if (evaluation.summary.trim().length === 0) {
-    errors.push('Evaluation summary cannot be empty.');
+  if (evaluation.feedback.trim().length === 0) {
+    errors.push('Evaluation feedback is required.');
+  }
+
+  if (!Array.isArray(evaluation.gaps_identified)) {
+    errors.push('Evaluation gaps_identified must be an array.');
+  }
+
+  if (evaluation.model_answer.trim().length === 0) {
+    errors.push('Evaluation model_answer is required.');
   }
 
   return { ok: errors.length === 0, errors };
@@ -35,37 +43,17 @@ export function validateEvaluation(evaluation: Evaluation): ValidationResult {
 export function validateAnswer(answer: Answer): ValidationResult {
   const errors: string[] = [];
 
-  if (answer.id.trim().length === 0) {
-    errors.push('Answer id is required.');
+  if (answer.audio_file_path.trim().length === 0) {
+    errors.push('Answer audio_file_path is required.');
   }
 
-  if (answer.questionId.trim().length === 0) {
-    errors.push('Answer questionId is required.');
+  if (!isIsoDate(answer.timestamp)) {
+    errors.push('Answer timestamp must be a valid ISO date string.');
   }
 
-  if (answer.transcript.trim().length === 0) {
-    errors.push('Answer transcript is required.');
-  }
-
-  if (!isIsoDate(answer.createdAtIso)) {
-    errors.push('Answer createdAtIso must be a valid ISO date string.');
-  }
-
-  if (answer.evaluation) {
+  if (typeof answer.evaluation !== 'undefined') {
     const evaluationResult = validateEvaluation(answer.evaluation);
     errors.push(...evaluationResult.errors);
-  }
-
-  if (answer.evaluationStatus && !ANSWER_EVALUATION_STATUSES.includes(answer.evaluationStatus)) {
-    errors.push('Answer evaluation status is invalid.');
-  }
-
-  if (answer.submittedAtIso && !isIsoDate(answer.submittedAtIso)) {
-    errors.push('Answer submittedAtIso must be a valid ISO date string when present.');
-  }
-
-  if (typeof answer.durationSeconds === 'number' && answer.durationSeconds <= 0) {
-    errors.push('Answer durationSeconds must be greater than 0 when present.');
   }
 
   return { ok: errors.length === 0, errors };
@@ -74,21 +62,27 @@ export function validateAnswer(answer: Answer): ValidationResult {
 export function validateQuestion(question: Question): ValidationResult {
   const errors: string[] = [];
 
-  if (question.id.trim().length === 0) {
-    errors.push('Question id is required.');
+  if (question.value.trim().length === 0) {
+    errors.push('Question value is required.');
   }
 
-  if (question.prompt.trim().length === 0) {
-    errors.push('Question prompt is required.');
+  if (question.category.trim().length === 0) {
+    errors.push('Question category is required.');
   }
 
   if (!isDifficulty(question.difficulty)) {
     errors.push('Question difficulty must be Easy, Medium, or Hard.');
   }
 
-  for (const answer of question.answers) {
-    const answerResult = validateAnswer(answer);
-    errors.push(...answerResult.errors);
+  if (question.answer.trim().length === 0) {
+    errors.push('Question answer is required.');
+  }
+
+  if (typeof question.answers !== 'undefined') {
+    for (const answer of question.answers) {
+      const answerResult = validateAnswer(answer);
+      errors.push(...answerResult.errors);
+    }
   }
 
   return { ok: errors.length === 0, errors };
@@ -96,22 +90,6 @@ export function validateQuestion(question: Question): ValidationResult {
 
 export function validateQuestionList(questionList: QuestionList): ValidationResult {
   const errors: string[] = [];
-
-  if (questionList.id.trim().length === 0) {
-    errors.push('QuestionList id is required.');
-  }
-
-  if (questionList.title.trim().length === 0) {
-    errors.push('QuestionList title is required.');
-  }
-
-  if (questionList.roleDescription.trim().length === 0) {
-    errors.push('QuestionList roleDescription is required.');
-  }
-
-  if (!isIsoDate(questionList.createdAtIso)) {
-    errors.push('QuestionList createdAtIso must be a valid ISO date string.');
-  }
 
   if (questionList.questions.length === 0) {
     errors.push('QuestionList must contain at least one question.');

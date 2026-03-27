@@ -1,39 +1,31 @@
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
 
 export interface Evaluation {
-  scoreOutOfTen: number;
-  strengths: string[];
-  improvements: string[];
-  summary: string;
-  evaluatedAtIso: string;
+  score: number;
+  candidate_answer: string;
+  feedback: string;
+  gaps_identified: string[];
+  model_answer: string;
 }
 
-export const ANSWER_EVALUATION_STATUSES = ['draft', 'pending', 'completed'] as const;
-export type AnswerEvaluationStatus = (typeof ANSWER_EVALUATION_STATUSES)[number];
-
 export interface Answer {
-  id: string;
-  questionId: string;
-  transcript: string;
-  audioFileUri: string | null;
-  createdAtIso: string;
-  evaluation: Evaluation | null;
-  evaluationStatus?: AnswerEvaluationStatus;
-  submittedAtIso?: string | null;
-  durationSeconds?: number;
+  audio_file_path: string;
+  timestamp: string;
+  evaluation?: Evaluation;
 }
 
 export interface Question {
-  id: string;
-  prompt: string;
+  value: string;
+  category: string;
   difficulty: Difficulty;
-  answers: Answer[];
+  answer: string;
+  answers?: Answer[];
 }
 
 export interface QuestionList {
-  id: string;
-  title: string;
-  roleDescription: string;
-  createdAtIso: string;
   questions: Question[];
+}
+
+export function buildQuestionValueKey(question: Pick<Question, 'category' | 'difficulty' | 'value'>): string {
+  return `${question.category}::${question.difficulty}::${question.value}`;
 }

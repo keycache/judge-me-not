@@ -1,4 +1,11 @@
-import { buildSessionPromptSnapshot, mapModelVariantToBackendModel, mapStrictnessToInstruction, resolvePromptTemplate } from '@/lib/prompt-template';
+import {
+    buildEvaluatorSystemPrompt,
+    buildSessionPromptSnapshot,
+    getEvaluationSchemaJson,
+    mapModelVariantToBackendModel,
+    mapStrictnessToInstruction,
+    resolvePromptTemplate,
+} from '@/lib/prompt-template';
 
 describe('prompt template', () => {
   it('interpolates prompt values into resolved template', () => {
@@ -44,5 +51,27 @@ describe('prompt template', () => {
 
     expect(snapshot.systemPersona).toBe('Direct and constructive interview coach');
     expect(snapshot.resolvedPrompt).toMatch(/Input Mode: image/);
+  });
+
+  it('builds evaluator prompt with core, strictness, schema, and profile append blocks', () => {
+    const prompt = buildEvaluatorSystemPrompt({
+      strictness: 'strict',
+      profilePromptText: 'Prefer concise bullet feedback.',
+    });
+
+    expect(prompt).toMatch(/\[CORE\]/);
+    expect(prompt).toMatch(/\[STRICTNESS\]/);
+    expect(prompt).toMatch(/high hiring-bar/i);
+    expect(prompt).toMatch(/\[SCHEMA_JSON\]/);
+    expect(prompt).toMatch(/candidate_answer/);
+    expect(prompt).toMatch(/\[PROFILE_APPEND\]/);
+    expect(prompt).toMatch(/Prefer concise bullet feedback\./);
+  });
+
+  it('exposes deterministic schema json helper', () => {
+    const schemaJson = getEvaluationSchemaJson();
+    expect(schemaJson).toMatch(/score/);
+    expect(schemaJson).toMatch(/gaps_identified/);
+    expect(schemaJson).toMatch(/model_answer/);
   });
 });
