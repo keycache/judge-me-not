@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -8,21 +9,27 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppTheme } from '@/constants/app-theme';
 import { useApiKey } from '@/hooks/use-api-key';
 import {
+    DEFAULT_APP_SETTINGS,
     EVALUATION_STRICTNESS_LEVELS,
     EvaluationStrictness,
     MODEL_VARIANTS,
     ModelVariant,
 } from '@/lib/domain/session-models';
 import { resolvePromptTemplate } from '@/lib/prompt-template';
-import { getAppSettings, patchPromptSettings } from '@/lib/repositories/settings-repository';
+import { getAppSettings, patchAppSettings } from '@/lib/repositories/settings-repository';
 
 export default function ProfileScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
+  const contentBottomPadding = tabBarHeight;
   const { apiKey, isLoading, persistApiKey, removeApiKey } = useApiKey();
   const [draftKey, setDraftKey] = useState(apiKey ?? '');
   const [status, setStatus] = useState('');
   const [modelVariant, setModelVariant] = useState<ModelVariant>('gpt-4.1-mini');
   const [strictness, setStrictness] = useState<EvaluationStrictness>('balanced');
   const [systemPersona, setSystemPersona] = useState('Direct and constructive interview coach');
+  const [recordingLimitSeconds, setRecordingLimitSeconds] = useState(
+    DEFAULT_APP_SETTINGS.recordingLimitSeconds.toString()
+  );
   const [promptStatus, setPromptStatus] = useState('');
 
   useEffect(() => {
@@ -35,6 +42,7 @@ export default function ProfileScreen() {
       setModelVariant(settings.promptSettings.modelVariant);
       setStrictness(settings.promptSettings.evaluationStrictness);
       setSystemPersona(settings.promptSettings.systemPersona);
+      setRecordingLimitSeconds(settings.recordingLimitSeconds.toString());
     }
 
     void loadPromptSettings();
@@ -57,12 +65,21 @@ export default function ProfileScreen() {
   }
 
   async function onSavePromptSettings() {
-    await patchPromptSettings({
-      modelVariant,
-      evaluationStrictness: strictness,
-      systemPersona,
+    const limit = Number(recordingLimitSeconds);
+    if (!Number.isInteger(limit) || limit < 10 || limit > 600) {
+      setPromptStatus('Recording limit must be an integer between 10 and 600 seconds.');
+      return;
+    }
+
+    await patchAppSettings({
+      recordingLimitSeconds: limit,
+      promptSettings: {
+        modelVariant,
+        evaluationStrictness: strictness,
+        systemPersona,
+      },
     });
-    setPromptStatus('Prompt settings updated.');
+    setPromptStatus('Prompt and practice settings updated.');
   }
 
   const promptPreview = resolvePromptTemplate({
@@ -80,7 +97,9 @@ export default function ProfileScreen() {
   return (
     <AppScreen
       title="Profile"
-      subtitle="Manage account-level settings. API key editing is available here and on first-run setup.">
+      subtitle="Manage account-level settings. API key editing is available here and on first-run setup."
+      excludeBottomSafeArea
+      contentBottomPadding={contentBottomPadding}>
       <AppCard title="API Settings">
         <Text style={styles.label}>OpenAI-compatible API key</Text>
         <AppInput
@@ -136,7 +155,10 @@ export default function ProfileScreen() {
         <Text style={styles.label}>System Persona</Text>
         <AppInput multiline numberOfLines={3} onChangeText={setSystemPersona} value={systemPersona} />
 
-        <AppButton label="Save Prompt Settings" onPress={onSavePromptSettings} />
+        <Text style={styles.label}>Recording Cap (seconds)</Text>
+        <AppInput keyboardType="number-pad" onChangeText={setRecordingLimitSeconds} value={recordingLimitSeconds} />
+
+        <AppButton label="Save Prompt + Practice Settings" onPress={onSavePromptSettings} />
         {promptStatus ? <Text style={styles.statusText}>{promptStatus}</Text> : null}
       </AppCard>
 

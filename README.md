@@ -48,3 +48,27 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+
+## Commands
+* local apk `eas build --local --platform android --profile preview`
+* run android
+```
+Do this exact recovery sequence in a terminal:
+
+Reset ADB and start your emulator explicitly
+adb kill-server
+adb start-server
+/Users/akashpatki/Library/Android/sdk/emulator/emulator -avd Medium_Phone_API_36.1
+
+Wait until Android is fully booted, then verify connection
+adb devices -l
+
+You should see a line like:
+emulator-5554 device ...
+
+Start Expo clean and launch app to emulator
+cd /Users/akashpatki/Documents/kash/code/moon/react-native/judge-me-not
+npx expo start --clear
+Then press a in the Expo terminal (instead of r first).
+```

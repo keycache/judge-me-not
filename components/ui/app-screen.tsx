@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppTheme } from '@/constants/app-theme';
 
@@ -8,12 +8,30 @@ interface AppScreenProps {
   title: string;
   subtitle?: string;
   children: ReactNode;
+  contentBottomPadding?: number;
+  excludeBottomSafeArea?: boolean;
 }
 
-export function AppScreen({ title, subtitle, children }: AppScreenProps) {
+export function AppScreen({
+  title,
+  subtitle,
+  children,
+  contentBottomPadding,
+  excludeBottomSafeArea = false,
+}: AppScreenProps) {
+  const insets = useSafeAreaInsets();
+  const safeAreaEdges = excludeBottomSafeArea ? (['top', 'left', 'right'] as const) : undefined;
+  const viewportBottomInset = excludeBottomSafeArea ? Math.max(0, contentBottomPadding ?? 0) : 0;
+  const contentTailPadding = styles.contentContainer.paddingBottom + (excludeBottomSafeArea ? insets.bottom : 0);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.contentContainer} style={styles.scrollView}>
+    <SafeAreaView style={styles.safeArea} edges={safeAreaEdges}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: contentTailPadding },
+        ]}
+        style={[styles.scrollView, viewportBottomInset > 0 ? { marginBottom: viewportBottomInset } : null]}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}

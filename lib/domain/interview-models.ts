@@ -8,6 +8,9 @@ export interface Evaluation {
   evaluatedAtIso: string;
 }
 
+export const ANSWER_EVALUATION_STATUSES = ['draft', 'pending', 'completed'] as const;
+export type AnswerEvaluationStatus = (typeof ANSWER_EVALUATION_STATUSES)[number];
+
 export interface Answer {
   id: string;
   questionId: string;
@@ -15,6 +18,9 @@ export interface Answer {
   audioFileUri: string | null;
   createdAtIso: string;
   evaluation: Evaluation | null;
+  evaluationStatus?: AnswerEvaluationStatus;
+  submittedAtIso?: string | null;
+  durationSeconds?: number;
 }
 
 export interface Question {

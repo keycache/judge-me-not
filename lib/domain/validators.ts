@@ -1,4 +1,4 @@
-import { Answer, Difficulty, Evaluation, Question, QuestionList } from '@/lib/domain/interview-models';
+import { ANSWER_EVALUATION_STATUSES, Answer, Difficulty, Evaluation, Question, QuestionList } from '@/lib/domain/interview-models';
 import { EVALUATION_STRICTNESS_LEVELS, MODEL_VARIANTS, Session } from '@/lib/domain/session-models';
 
 export interface ValidationResult {
@@ -54,6 +54,18 @@ export function validateAnswer(answer: Answer): ValidationResult {
   if (answer.evaluation) {
     const evaluationResult = validateEvaluation(answer.evaluation);
     errors.push(...evaluationResult.errors);
+  }
+
+  if (answer.evaluationStatus && !ANSWER_EVALUATION_STATUSES.includes(answer.evaluationStatus)) {
+    errors.push('Answer evaluation status is invalid.');
+  }
+
+  if (answer.submittedAtIso && !isIsoDate(answer.submittedAtIso)) {
+    errors.push('Answer submittedAtIso must be a valid ISO date string when present.');
+  }
+
+  if (typeof answer.durationSeconds === 'number' && answer.durationSeconds <= 0) {
+    errors.push('Answer durationSeconds must be greater than 0 when present.');
   }
 
   return { ok: errors.length === 0, errors };

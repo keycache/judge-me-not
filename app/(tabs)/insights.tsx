@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppCard } from '@/components/ui/app-card';
@@ -5,8 +6,15 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppTheme } from '@/constants/app-theme';
 
 export default function InsightsScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
+  const contentBottomPadding = tabBarHeight;
+
   return (
-    <AppScreen title="Insights" subtitle="Session analytics dashboard shell with readiness and performance placeholders.">
+    <AppScreen
+      title="Insights"
+      subtitle="Session analytics dashboard shell with readiness and performance placeholders."
+      excludeBottomSafeArea
+      contentBottomPadding={contentBottomPadding}>
       <View style={styles.metricRow}>
         <AppCard title="Readiness">
           <Text style={styles.metric}>--</Text>

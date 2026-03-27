@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,14 +11,14 @@ import { AppTheme } from '@/constants/app-theme';
 import { Difficulty, QuestionList } from '@/lib/domain/interview-models';
 import { Session } from '@/lib/domain/session-models';
 import {
-    ImageInput,
-    InputMode,
-    MAX_IMAGES,
-    MAX_IMAGE_SIZE_BYTES,
-    MAX_QUESTIONS_PER_BATCH,
-    validateImageSelection,
-    validateInputMode,
-    validateQuestionsPerBatch,
+  ImageInput,
+  InputMode,
+  MAX_IMAGES,
+  MAX_IMAGE_SIZE_BYTES,
+  MAX_QUESTIONS_PER_BATCH,
+  validateImageSelection,
+  validateInputMode,
+  validateQuestionsPerBatch,
 } from '@/lib/interview-rules';
 import { buildSessionPromptSnapshot } from '@/lib/prompt-template';
 import { createSessionFromQuestionList, listSessions, saveSession } from '@/lib/repositories/session-repository';
@@ -53,6 +54,8 @@ function buildQuestionListFromGeneration(input: {
 }
 
 export default function PrepareScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
+  const contentBottomPadding = tabBarHeight;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mode, setMode] = useState<InputMode>('text');
   const [textDescription, setTextDescription] = useState('');
@@ -245,7 +248,9 @@ export default function PrepareScreen() {
   return (
     <AppScreen
       title="Prepare"
-      subtitle="Generate interview questions by role context, then track session progress by difficulty tier.">
+      subtitle="Generate interview questions by role context, then track session progress by difficulty tier."
+      excludeBottomSafeArea
+      contentBottomPadding={contentBottomPadding}>
       <AppCard title="Input Mode">
         <View style={styles.toggleRow}>
           <Pressable
