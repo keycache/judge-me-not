@@ -91,7 +91,7 @@ describe('session repository', () => {
       sessionNameFromModel: 'Prompt Snapshot Session',
       questionList: buildQuestionList(),
       promptSnapshot: {
-        modelVariant: 'gpt-4.1-mini',
+        modelVariant: 'gemini-3.1-flash-lite-preview',
         evaluationStrictness: 'strict',
         systemPersona: 'Very strict interviewer',
         resolvedPrompt: 'Prompt body v1',
@@ -103,7 +103,7 @@ describe('session repository', () => {
     const loaded = await getSessionById(saved.id);
 
     expect(loaded?.promptSnapshot).toEqual({
-      modelVariant: 'gpt-4.1-mini',
+      modelVariant: 'gemini-3.1-flash-lite-preview',
       evaluationStrictness: 'strict',
       systemPersona: 'Very strict interviewer',
       resolvedPrompt: 'Prompt body v1',

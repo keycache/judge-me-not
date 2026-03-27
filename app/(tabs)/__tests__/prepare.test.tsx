@@ -95,7 +95,7 @@ function buildSession(overrides: Partial<Session>): Session {
     },
     audioIndex: [],
     promptSnapshot: {
-      modelVariant: 'gpt-4.1-mini',
+      modelVariant: 'gemini-3.1-flash-lite-preview',
       evaluationStrictness: 'balanced',
       systemPersona: 'Coach',
       resolvedPrompt: 'stub',
@@ -116,7 +116,7 @@ describe('prepare session details modal', () => {
       activeSessionId: null,
       recordingLimitSeconds: 120,
       promptSettings: {
-        modelVariant: 'gpt-4.1-mini',
+        modelVariant: 'gemini-3.1-flash-lite-preview',
         evaluationStrictness: 'balanced',
         systemPersona: 'Coach',
       },
@@ -131,7 +131,7 @@ describe('prepare session details modal', () => {
         sourceText: 'Senior backend role with distributed systems focus.',
       },
       promptSnapshot: {
-        modelVariant: 'gpt-4.1',
+        modelVariant: 'gemini-2.5-flash-lite-preview',
         evaluationStrictness: 'strict',
         systemPersona: 'Direct and concise',
         resolvedPrompt: 'prompt',
@@ -152,7 +152,7 @@ describe('prepare session details modal', () => {
       expect(screen.getByTestId('prepare-session-details-modal')).toBeTruthy();
       expect(screen.getByTestId('prepare-session-details-source-text')).toBeTruthy();
       expect(screen.getByText('Senior backend role with distributed systems focus.')).toBeTruthy();
-      expect(screen.getByText('Model: gpt-4.1')).toBeTruthy();
+      expect(screen.getByText('Model: gemini-2.5-flash-lite-preview')).toBeTruthy();
       expect(screen.getByText('Strictness: strict')).toBeTruthy();
       expect(screen.getByText('Persona: Direct and concise')).toBeTruthy();
     });

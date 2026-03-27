@@ -32,7 +32,7 @@ describe('settings repository', () => {
 
     expect(settings.activeSessionId).toBeNull();
     expect(settings.recordingLimitSeconds).toBe(120);
-    expect(settings.promptSettings.modelVariant).toBe('gpt-4.1-mini');
+    expect(settings.promptSettings.modelVariant).toBe('gemini-3.1-flash-lite-preview');
     expect(settings.promptSettings.evaluationStrictness).toBe('balanced');
   });
 
@@ -41,7 +41,7 @@ describe('settings repository', () => {
       activeSessionId: 'session-1',
       recordingLimitSeconds: 180,
       promptSettings: {
-        modelVariant: 'gpt-4.1',
+        modelVariant: 'gemini-2.5-flash-lite-preview',
         evaluationStrictness: 'strict',
         systemPersona: 'Structured and direct interviewer',
       },
@@ -51,7 +51,7 @@ describe('settings repository', () => {
 
     expect(patched.activeSessionId).toBe('session-2');
     expect(patched.recordingLimitSeconds).toBe(180);
-    expect(patched.promptSettings.modelVariant).toBe('gpt-4.1');
+    expect(patched.promptSettings.modelVariant).toBe('gemini-2.5-flash-lite-preview');
   });
 
   it('patches prompt settings without dropping existing setting fields', async () => {
@@ -59,7 +59,7 @@ describe('settings repository', () => {
       activeSessionId: 'session-1',
       recordingLimitSeconds: 200,
       promptSettings: {
-        modelVariant: 'gpt-4.1-mini',
+        modelVariant: 'gemini-3.1-flash-lite-preview',
         evaluationStrictness: 'balanced',
         systemPersona: 'Coaching interviewer',
       },
@@ -68,7 +68,7 @@ describe('settings repository', () => {
     const updated = await patchPromptSettings({ evaluationStrictness: 'lenient' });
 
     expect(updated.promptSettings.evaluationStrictness).toBe('lenient');
-    expect(updated.promptSettings.modelVariant).toBe('gpt-4.1-mini');
+    expect(updated.promptSettings.modelVariant).toBe('gemini-3.1-flash-lite-preview');
     expect(updated.recordingLimitSeconds).toBe(200);
   });
 });

@@ -26,6 +26,7 @@ describe('genai helpers', () => {
     expect(request.config).toEqual({ responseMimeType: 'application/json' });
     expect(JSON.stringify(request.contents)).toContain('Senior backend engineer role.');
     expect(JSON.stringify(request.contents)).toContain('proposed_session_name');
+    expect(JSON.stringify(request.contents)).toContain('max 60 chars');
     expect(JSON.stringify(request.contents)).not.toContain('fileUri');
   });
 

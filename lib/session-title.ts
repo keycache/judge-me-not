@@ -1,9 +1,13 @@
 import { InputMode } from '@/lib/interview-rules';
 
-const MAX_SESSION_TITLE_CHARS = 60;
+export const MAX_SESSION_TITLE_CHARS = 60;
 
 function normalizeWhitespace(input: string): string {
   return input.replace(/\s+/g, ' ').trim();
+}
+
+function stripWrappingQuotes(input: string): string {
+  return input.replace(/^["'`]+|["'`]+$/g, '');
 }
 
 function trimToLength(input: string, maxChars: number): string {
@@ -24,8 +28,15 @@ function titleCaseFromWords(input: string): string {
     .join(' ');
 }
 
-// Placeholder one-liner title generator for Phase 5B.
-// In Phase 5D this should be replaced by LLM-derived naming from generation output.
+export function normalizeSessionTitleCandidate(input: string | null | undefined): string | undefined {
+  const normalized = stripWrappingQuotes(normalizeWhitespace(input ?? ''));
+  if (!normalized) {
+    return undefined;
+  }
+
+  return trimToLength(normalized, MAX_SESSION_TITLE_CHARS);
+}
+
 export function generateSessionOneLinerTitle(input: {
   mode: InputMode;
   sourceText: string;
@@ -45,4 +56,22 @@ export function generateSessionOneLinerTitle(input: {
   const firstSentence = normalized.split(/[.!?]/)[0] || normalized;
   const titleCandidate = titleCaseFromWords(firstSentence);
   return trimToLength(titleCandidate || input.fallback, MAX_SESSION_TITLE_CHARS);
+}
+
+export function resolveSessionTitle(input: {
+  proposedTitle?: string | null;
+  mode: InputMode;
+  sourceText: string;
+  imageCount: number;
+  fallback: string;
+}): string {
+  return (
+    normalizeSessionTitleCandidate(input.proposedTitle) ??
+    generateSessionOneLinerTitle({
+      mode: input.mode,
+      sourceText: input.sourceText,
+      imageCount: input.imageCount,
+      fallback: input.fallback,
+    })
+  );
 }

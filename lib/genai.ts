@@ -5,6 +5,7 @@ import { Evaluation, QuestionList } from '@/lib/domain/interview-models';
 import { PromptSettings } from '@/lib/domain/session-models';
 import { validateEvaluation, validateQuestionList } from '@/lib/domain/validators';
 import { buildEvaluatorSystemPrompt, mapModelVariantToBackendModel } from '@/lib/prompt-template';
+import { MAX_SESSION_TITLE_CHARS } from '@/lib/session-title';
 
 export interface UploadedFileReference {
   uri: string;
@@ -222,7 +223,7 @@ function buildQuestionGenerationPrompt(input: QuestionGenerationInput): string {
     sourceContext,
     `Difficulties: ${input.selectedDifficulties.join(', ')}`,
     `Questions per difficulty: ${input.questionCountPerDifficulty}`,
-    'Also propose a concise, user-friendly session title in proposed_session_name (max 40 chars, no timestamp).',
+    `Also propose a concise, user-friendly session title in proposed_session_name (max ${MAX_SESSION_TITLE_CHARS} chars, no timestamp).`,
     'Each question must include value, category, difficulty, and answer.',
     '[QUESTION_LIST_SCHEMA_JSON]',
     getQuestionListSchemaJson(),

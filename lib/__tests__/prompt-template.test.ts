@@ -15,7 +15,7 @@ describe('prompt template', () => {
       selectedDifficulties: ['Easy', 'Hard'],
       questionCountPerDifficulty: 12,
       promptSettings: {
-        modelVariant: 'gpt-4.1-mini',
+        modelVariant: 'gemini-3.1-flash-lite-preview',
         evaluationStrictness: 'strict',
         systemPersona: 'Tough but fair interviewer',
       },
@@ -29,8 +29,8 @@ describe('prompt template', () => {
   });
 
   it('maps model variants and strictness values deterministically', () => {
-    expect(mapModelVariantToBackendModel('gpt-4.1-mini')).toBe('gpt-4.1-mini');
-    expect(mapModelVariantToBackendModel('gpt-4.1')).toBe('gpt-4.1');
+    expect(mapModelVariantToBackendModel('gemini-2.5-flash-lite-preview')).toBe('gemini-2.5-flash-lite-preview');
+    expect(mapModelVariantToBackendModel('gemini-3.1-flash-lite-preview')).toBe('gemini-3.1-flash-lite-preview');
     expect(mapStrictnessToInstruction('lenient')).toMatch(/confidence/i);
     expect(mapStrictnessToInstruction('balanced')).toMatch(/balance/i);
     expect(mapStrictnessToInstruction('strict')).toMatch(/high hiring-bar/i);
@@ -43,7 +43,7 @@ describe('prompt template', () => {
       selectedDifficulties: ['Medium'],
       questionCountPerDifficulty: 8,
       promptSettings: {
-        modelVariant: 'gpt-4o-mini',
+        modelVariant: 'gemini-3.1-flash-lite-preview',
         evaluationStrictness: 'balanced',
         systemPersona: '   ',
       },

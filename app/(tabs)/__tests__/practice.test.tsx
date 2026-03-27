@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { buildQuestionValueKey, Question } from '@/lib/domain/interview-models';
 import { Session } from '@/lib/domain/session-models';
@@ -127,7 +127,21 @@ function buildSession(id: string, title: string, questions: Question[], createdA
 }
 
 async function renderPracticeScreen() {
-  return render(<PracticeScreen />);
+  const screen = render(<PracticeScreen />);
+
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  await waitFor(() => {
+    expect(mockListSessions).toHaveBeenCalled();
+    expect(mockGetAppSettings).toHaveBeenCalled();
+    expect(mockListPendingEvaluations).toHaveBeenCalled();
+    expect(mockProcessPendingEvaluations).toHaveBeenCalled();
+  });
+
+  return screen;
 }
 
 describe('practice screen selectors + details', () => {

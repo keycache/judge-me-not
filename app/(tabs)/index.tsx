@@ -25,7 +25,7 @@ import {
 import { buildSessionPromptSnapshot } from '@/lib/prompt-template';
 import { createSessionFromQuestionList, deleteSession, listSessions, saveSession } from '@/lib/repositories/session-repository';
 import { getAppSettings } from '@/lib/repositories/settings-repository';
-import { generateSessionOneLinerTitle } from '@/lib/session-title';
+import { resolveSessionTitle } from '@/lib/session-title';
 
 export default function PrepareScreen() {
   const tabBarHeight = useBottomTabBarHeight();
@@ -225,14 +225,13 @@ export default function PrepareScreen() {
         imageUris: mode === 'image' ? images.map((image) => image.uri) : undefined,
       });
 
-      const sessionNameFromModel =
-        generationResult.proposedSessionName ??
-        generateSessionOneLinerTitle({
-          mode,
-          sourceText: textDescription,
-          imageCount: images.length,
-          fallback: mode === 'text' ? 'Interview Session' : 'Image Interview Session',
-        });
+      const sessionNameFromModel = resolveSessionTitle({
+        proposedTitle: generationResult.proposedSessionName,
+        mode,
+        sourceText: textDescription,
+        imageCount: images.length,
+        fallback: mode === 'text' ? 'Interview Session' : 'Image Interview Session',
+      });
 
       setPendingSessionTitle(sessionNameFromModel);
       setGenerationStatus(`Creating "${sessionNameFromModel}"...`);

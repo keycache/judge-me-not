@@ -1,4 +1,4 @@
-import { generateSessionOneLinerTitle } from '@/lib/session-title';
+import { generateSessionOneLinerTitle, normalizeSessionTitleCandidate, resolveSessionTitle } from '@/lib/session-title';
 
 describe('session title generation', () => {
   it('creates a concise one-liner for text mode', () => {
@@ -35,5 +35,21 @@ describe('session title generation', () => {
 
     expect(title).toMatch(/3 Images/);
     expect(title.length).toBeLessThanOrEqual(60);
+  });
+
+  it('normalizes model-proposed titles before persisting them', () => {
+    expect(normalizeSessionTitleCandidate('  "Distributed\nSystems Loop"  ')).toBe('Distributed Systems Loop');
+  });
+
+  it('prefers a normalized model-proposed title over the local fallback', () => {
+    const title = resolveSessionTitle({
+      proposedTitle: '  Staff Platform Deep Dive  ',
+      mode: 'text',
+      sourceText: 'This text should not be used when the model proposes a title.',
+      imageCount: 0,
+      fallback: 'Interview Session',
+    });
+
+    expect(title).toBe('Staff Platform Deep Dive');
   });
 });
