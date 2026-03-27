@@ -7,19 +7,24 @@ interface AppButtonProps {
   onPress: () => void;
   variant?: 'primary' | 'ghost';
   testID?: string;
+  disabled?: boolean;
 }
 
-export function AppButton({ label, onPress, variant = 'primary', testID }: AppButtonProps) {
+export function AppButton({ label, onPress, variant = 'primary', testID, disabled = false }: AppButtonProps) {
   return (
     <Pressable
       testID={testID}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
         variant === 'primary' ? styles.primary : styles.ghost,
-        pressed ? styles.pressed : null,
+        disabled ? styles.disabled : null,
+        pressed && !disabled ? styles.pressed : null,
       ]}>
-      <Text style={[styles.text, variant === 'primary' ? styles.primaryText : styles.ghostText]}>{label}</Text>
+      <Text style={[styles.text, variant === 'primary' ? styles.primaryText : styles.ghostText, disabled ? styles.disabledText : null]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -55,5 +60,11 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
+  },
+  disabled: {
+    opacity: 0.55,
+  },
+  disabledText: {
+    opacity: 0.9,
   },
 });

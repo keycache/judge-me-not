@@ -1,15 +1,17 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { AppInput } from '@/components/ui/app-input';
 import { AppScreen } from '@/components/ui/app-screen';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AppTheme } from '@/constants/app-theme';
-import { Difficulty, QuestionList } from '@/lib/domain/interview-models';
+import { Difficulty } from '@/lib/domain/interview-models';
 import { Session } from '@/lib/domain/session-models';
+import { generateInterviewQuestions } from '@/lib/genai';
 import {
   ImageInput,
   InputMode,
@@ -24,31 +26,6 @@ import { buildSessionPromptSnapshot } from '@/lib/prompt-template';
 import { createSessionFromQuestionList, deleteSession, listSessions, saveSession } from '@/lib/repositories/session-repository';
 import { getAppSettings } from '@/lib/repositories/settings-repository';
 import { generateSessionOneLinerTitle } from '@/lib/session-title';
-
-function buildQuestionListFromGeneration(input: {
-  textDescription: string;
-  mode: InputMode;
-  selectedDifficulties: Difficulty[];
-  questionCountPerDifficulty: number;
-}): QuestionList {
-  const roleContext = input.textDescription || 'Image based role context';
-  const questions = input.selectedDifficulties.flatMap((difficulty) =>
-    Array.from({ length: input.questionCountPerDifficulty }, (_, index) => ({
-      value:
-        input.mode === 'text'
-          ? `[${difficulty}] ${input.textDescription || 'Behavioral interview'} (#${index + 1})`
-          : `[${difficulty}] Image-derived question (#${index + 1})`,
-      category: roleContext,
-      difficulty,
-      answer: 'Use a structured STAR response with concrete impact metrics and trade-off analysis.',
-      answers: [],
-    }))
-  );
-
-  return {
-    questions,
-  };
-}
 
 export default function PrepareScreen() {
   const tabBarHeight = useBottomTabBarHeight();
@@ -70,6 +47,9 @@ export default function PrepareScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isGeneratingSession, setIsGeneratingSession] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState('');
+  const [pendingSessionTitle, setPendingSessionTitle] = useState<string | null>(null);
 
   const loadPersistedSessions = useCallback(async () => {
     const stored = await listSessions();
@@ -177,6 +157,10 @@ export default function PrepareScreen() {
   }, [addPickedAsset]);
 
   const onGenerate = useCallback(async () => {
+    if (isGeneratingSession) {
+      return;
+    }
+
     const count = Number(questionCount);
     const countValidation = validateQuestionsPerBatch(count);
     const modeValidation = validateInputMode(mode, textDescription, images);
@@ -195,6 +179,9 @@ export default function PrepareScreen() {
     }
 
     setValidationErrors([]);
+  setIsGeneratingSession(true);
+  setPendingSessionTitle(null);
+  setGenerationStatus(mode === 'image' ? 'Analyzing images and drafting questions...' : 'Reading role context and drafting questions...');
     setProgressByDifficulty({ Easy: 0, Medium: 0, Hard: 0 });
 
     if (timerRef.current) {
@@ -219,41 +206,69 @@ export default function PrepareScreen() {
       });
     }, 250);
 
-    const questionList = buildQuestionListFromGeneration({
-      textDescription,
-      mode,
-      selectedDifficulties: activeDifficulties,
-      questionCountPerDifficulty: count,
-    });
-
-    const appSettings = await getAppSettings();
-    const promptSnapshot = buildSessionPromptSnapshot({
-      roleDescription: textDescription || 'Image based role context',
-      inputMode: mode,
-      selectedDifficulties: activeDifficulties,
-      questionCountPerDifficulty: count,
-      promptSettings: appSettings.promptSettings,
-    });
-
-    const session = createSessionFromQuestionList({
-      sessionNameFromModel: generateSessionOneLinerTitle({
-        mode,
-        sourceText: textDescription,
-        imageCount: images.length,
-        fallback: mode === 'text' ? 'Interview Session' : 'Image Interview Session',
-      }),
-      questionList,
-      promptSnapshot,
-      sourceContext: {
+    try {
+      const appSettings = await getAppSettings();
+      const promptSnapshot = buildSessionPromptSnapshot({
+        roleDescription: textDescription || 'Image based role context',
         inputMode: mode,
-        sourceText: mode === 'text' ? textDescription : undefined,
-        imageUris: mode === 'image' ? images.map((image) => image.uri) : undefined,
-      },
-    });
+        selectedDifficulties: activeDifficulties,
+        questionCountPerDifficulty: count,
+        promptSettings: appSettings.promptSettings,
+      });
 
-    await saveSession(session);
-    await loadPersistedSessions();
-  }, [activeDifficulties, images, loadPersistedSessions, mode, questionCount, textDescription]);
+      const generationResult = await generateInterviewQuestions({
+        roleDescription: textDescription || 'Image based role context',
+        inputMode: mode,
+        selectedDifficulties: activeDifficulties,
+        questionCountPerDifficulty: count,
+        promptSettings: appSettings.promptSettings,
+        imageUris: mode === 'image' ? images.map((image) => image.uri) : undefined,
+      });
+
+      const sessionNameFromModel =
+        generationResult.proposedSessionName ??
+        generateSessionOneLinerTitle({
+          mode,
+          sourceText: textDescription,
+          imageCount: images.length,
+          fallback: mode === 'text' ? 'Interview Session' : 'Image Interview Session',
+        });
+
+      setPendingSessionTitle(sessionNameFromModel);
+      setGenerationStatus(`Creating "${sessionNameFromModel}"...`);
+
+      setProgressByDifficulty((current) => ({
+        Easy: activeDifficulties.includes('Easy') ? 100 : current.Easy,
+        Medium: activeDifficulties.includes('Medium') ? 100 : current.Medium,
+        Hard: activeDifficulties.includes('Hard') ? 100 : current.Hard,
+      }));
+
+      const session = createSessionFromQuestionList({
+        sessionNameFromModel,
+        questionList: generationResult.questionList,
+        promptSnapshot,
+        sourceContext: {
+          inputMode: mode,
+          sourceText: mode === 'text' ? textDescription : undefined,
+          imageUris: mode === 'image' ? images.map((image) => image.uri) : undefined,
+        },
+      });
+
+      await saveSession(session);
+      await loadPersistedSessions();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Session generation failed.';
+      setValidationErrors([message]);
+    } finally {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      setIsGeneratingSession(false);
+      setGenerationStatus('');
+      setPendingSessionTitle(null);
+    }
+  }, [activeDifficulties, images, isGeneratingSession, loadPersistedSessions, mode, questionCount, textDescription]);
 
   const onOpenSessionDetails = useCallback((session: Session) => {
     setSelectedSession(session);
@@ -366,7 +381,21 @@ export default function PrepareScreen() {
       </AppCard>
 
       <AppCard title="Generation Queue">
-        <AppButton testID="prepare-generate-session" label="Generate Session" onPress={onGenerate} />
+        <AppButton
+          testID="prepare-generate-session"
+          label={isGeneratingSession ? 'Generating Session...' : 'Generate Session'}
+          onPress={onGenerate}
+          disabled={isGeneratingSession}
+        />
+        {isGeneratingSession ? (
+          <View testID="prepare-generation-loading" style={styles.loadingStateCard}>
+            <ActivityIndicator color={AppTheme.colors.accent} size="small" />
+            <View style={styles.loadingCopyColumn}>
+              <Text style={styles.loadingTitle}>{pendingSessionTitle ?? 'Generating session draft...'}</Text>
+              <Text style={styles.loadingText}>{generationStatus}</Text>
+            </View>
+          </View>
+        ) : null}
         <View style={styles.progressColumn}>
           {(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((difficulty) => {
             const progress = progressByDifficulty[difficulty];
@@ -395,38 +424,54 @@ export default function PrepareScreen() {
       <AppCard title="Past Sessions">
         {sessions.length === 0 ? <Text testID="prepare-no-sessions" style={styles.bodyText}>No sessions yet.</Text> : null}
         {sessions.map((session, index) => (
-          <View key={session.id} style={styles.sessionRowWrap}>
-            <Pressable testID={`prepare-session-row-${index.toString()}`} style={styles.sessionRow} onPress={() => onOpenSessionDetails(session)}>
-              <Text style={styles.sessionTitle}>{session.title}</Text>
-              <Text style={styles.sessionMeta}>{new Date(session.createdAtIso).toLocaleString()}</Text>
-              <Text style={styles.sessionMeta}>{session.questionList.questions.length} questions</Text>
-            </Pressable>
+          <Pressable key={session.id} testID={`prepare-session-row-${index.toString()}`} style={styles.sessionRow} onPress={() => onOpenSessionDetails(session)}>
             <Pressable
               accessibilityLabel={`Delete ${session.title}`}
+              hitSlop={10}
               onPress={() => onDeleteSession(session)}
               style={styles.deleteIconButton}
               testID={`prepare-delete-session-${index.toString()}`}>
-              <Text style={styles.deleteIconText}>DEL</Text>
+              <IconSymbol color={AppTheme.colors.warning} name="trash.fill" size={18} />
             </Pressable>
-          </View>
+              <Text style={styles.sessionTitle}>{session.title}</Text>
+              <Text style={styles.sessionMeta}>{new Date(session.createdAtIso).toLocaleString()}</Text>
+              <Text style={styles.sessionMeta}>{session.questionList.questions.length} questions</Text>
+          </Pressable>
         ))}
       </AppCard>
 
       <Modal animationType="slide" transparent visible={Boolean(selectedSession)} onRequestClose={onCloseSessionDetails}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalPanel}>
+          <View style={styles.modalPanel} testID="prepare-session-details-modal">
             <Text style={styles.modalTitle}>{selectedSession?.title ?? 'Session Details'}</Text>
-            <Text style={styles.sessionMeta}>Mode: {selectedSession?.sourceContext?.inputMode ?? 'unknown'}</Text>
-            <Text style={styles.sessionMeta}>Questions: {selectedSession?.questionList.questions.length ?? 0}</Text>
+            <Text style={styles.sessionMeta} testID="prepare-session-details-mode">
+              Mode: {selectedSession?.sourceContext?.inputMode ?? 'unknown'}
+            </Text>
+            <Text style={styles.sessionMeta} testID="prepare-session-details-question-count">
+              Questions: {selectedSession?.questionList.questions.length ?? 0}
+            </Text>
+            <Text style={styles.sectionTitle}>Generation Settings</Text>
+            <Text style={styles.sessionMeta} testID="prepare-session-details-model">
+              Model: {selectedSession?.promptSnapshot?.modelVariant ?? 'unknown'}
+            </Text>
+            <Text style={styles.sessionMeta} testID="prepare-session-details-strictness">
+              Strictness: {selectedSession?.promptSnapshot?.evaluationStrictness ?? 'unknown'}
+            </Text>
+            <Text style={styles.sessionMeta} testID="prepare-session-details-persona">
+              Persona: {selectedSession?.promptSnapshot?.systemPersona ?? 'unknown'}
+            </Text>
             {selectedSession?.sourceContext?.inputMode === 'text' ? (
               <ScrollView style={styles.detailsScrollArea}>
-                <Text style={styles.bodyText}>{selectedSession.sourceContext.sourceText || 'No text context found.'}</Text>
+                <Text style={styles.sectionTitle}>Source Description</Text>
+                <Text style={styles.bodyText} testID="prepare-session-details-source-text">
+                  {selectedSession.sourceContext.sourceText || 'No text context found.'}
+                </Text>
               </ScrollView>
             ) : (
               <View style={styles.carouselArea}>
                 {selectedSession?.sourceContext?.imageUris && selectedSession.sourceContext.imageUris.length > 0 ? (
                   <>
-                    <Text style={styles.sessionMeta}>
+                    <Text style={styles.sessionMeta} testID="prepare-session-details-image-count">
                       Image {selectedImageIndex + 1} of {selectedSession.sourceContext.imageUris.length}
                     </Text>
                     <ScrollView
@@ -543,6 +588,31 @@ const styles = StyleSheet.create({
   progressColumn: {
     gap: AppTheme.spacing.xs,
   },
+  loadingStateCard: {
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    padding: AppTheme.spacing.sm,
+    gap: AppTheme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingCopyColumn: {
+    flex: 1,
+    gap: AppTheme.spacing.xs,
+  },
+  loadingTitle: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 14,
+    textTransform: 'uppercase',
+  },
+  loadingText: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.bodyFamily,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -585,7 +655,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   sessionRow: {
-    flex: 1,
     borderColor: AppTheme.colors.borderSubtle,
     borderWidth: 1,
     backgroundColor: AppTheme.colors.surfaceSecondary,
@@ -593,6 +662,8 @@ const styles = StyleSheet.create({
     paddingVertical: AppTheme.spacing.sm,
     borderRadius: AppTheme.radius.none,
     gap: AppTheme.spacing.xs,
+    position: 'relative',
+    paddingRight: AppTheme.spacing.xl * 2,
   },
   sessionTitle: {
     color: AppTheme.colors.textPrimary,
@@ -604,23 +675,15 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.typography.monoFamily,
     fontSize: 12,
   },
-  sessionRowWrap: {
-    flexDirection: 'row',
-    gap: AppTheme.spacing.sm,
-    alignItems: 'stretch',
-  },
   deleteIconButton: {
-    borderColor: AppTheme.colors.warning,
-    borderWidth: 1,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
+    position: 'absolute',
+    top: AppTheme.spacing.sm,
+    right: AppTheme.spacing.sm,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: AppTheme.spacing.sm,
-  },
-  deleteIconText: {
-    color: AppTheme.colors.warning,
-    fontFamily: AppTheme.typography.monoFamily,
-    fontSize: 12,
-    letterSpacing: 0.8,
+    zIndex: 1,
   },
   modalBackdrop: {
     flex: 1,
@@ -640,6 +703,13 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textPrimary,
     fontFamily: AppTheme.typography.headingFamily,
     fontSize: 16,
+    textTransform: 'uppercase',
+  },
+  sectionTitle: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 12,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   detailsScrollArea: {

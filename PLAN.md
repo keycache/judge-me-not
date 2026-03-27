@@ -81,10 +81,18 @@
     - compact Past Sessions rows (title + metadata only).
     - session details modal implemented (text details + image carousel with index/dots).
     - row-level session delete action implemented with confirmation.
+  - Phase 5C completed in code:
+    - session details modal now shows generation settings (model, strictness, persona).
+    - text sessions display source description in details modal.
+    - image sessions display carousel count/index metadata with URI previews.
+  - Phase 5D completed in code:
+    - Google GenAI SDK integrated for question generation and answer evaluation.
+    - schema-validated JSON parsing added for generated question lists and evaluations.
+    - online evaluation now falls back to pending-queue retry when live evaluation fails.
+    - request builder + parser tests added for text, image, and audio flows.
 - Remaining in Phase 5:
   - Session naming from model-generated one-liner title (currently deterministic local helper; replace with LLM output path).
-  - Wire real Google GenAI calls for question generation/evaluation (current behavior still local/mock scaffolding).
-  - Complete integration tests for all new Prepare/Practice behaviors.
+  - Complete broader integration coverage for full end-to-end generation/evaluation flows in app-level tests.
 
 ### Sub-Phases
 - Phase 5A - Completed Core Foundations
@@ -96,12 +104,12 @@
   - Update Prepare > Past Sessions cards to show only concise title + metadata, not full source text blob.
   - Add tap-to-open session details and delete-session affordance.
 - Phase 5C - Session Details Modal + Media/Text Context
-  - Text sessions: details panel shows source description and generation settings.
-  - Image sessions: carousel view for selected images with count/index.
+  - Completed: text sessions now show source description and generation settings.
+  - Completed: image sessions now show carousel view with count/index.
 - Phase 5D - GenAI Production Integration + Validation
-  - Replace mock generation/evaluation with Google GenAI SDK request paths.
-  - Parse and validate JSON responses against schema.
-  - Add resiliency/error handling and regression tests.
+  - Completed: replaced mock generation/evaluation with Google GenAI SDK request paths.
+  - Completed: parse and validate JSON responses against schema.
+  - Completed: added resiliency/error handling and regression tests for request/parse/retry behavior.
 
 ### Locked Product Decisions (Mar 27, 2026)
 - Session one-liner title max length: 60 characters.

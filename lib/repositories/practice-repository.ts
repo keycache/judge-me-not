@@ -1,7 +1,8 @@
 import { Answer, buildQuestionValueKey } from '@/lib/domain/interview-models';
 import { Session } from '@/lib/domain/session-models';
-import { evaluateTranscript } from '@/lib/practice-engine';
+import { evaluateInterviewAnswer } from '@/lib/genai';
 import { getSessionById, saveSession } from '@/lib/repositories/session-repository';
+import { getAppSettings } from '@/lib/repositories/settings-repository';
 import { readJsonValue, writeJsonValue } from '@/lib/storage/json-storage';
 
 const PENDING_EVALS_STORAGE_KEY = 'judge-me-not.pending-evals.json';
@@ -159,9 +160,43 @@ export async function submitAttemptForEvaluation(input: {
     return 'pending';
   }
 
-  answer.evaluation = evaluateTranscript(input.transcript);
-  await saveSession(session);
-  return 'completed';
+  const question = findQuestion(session, input.questionValueKey);
+  if (!question) {
+    throw new Error('Question not found for evaluation.');
+  }
+
+  try {
+    const appSettings = await getAppSettings();
+    answer.evaluation = await evaluateInterviewAnswer({
+      question: question.value,
+      idealAnswer: question.answer,
+      audioFilePath: answer.audio_file_path,
+      promptSettings: appSettings.promptSettings,
+    });
+    await saveSession(session);
+    return 'completed';
+  } catch {
+    const queue = await getPendingQueue();
+    const alreadyQueued = queue.some(
+      (item) =>
+        item.sessionId === input.sessionId &&
+        item.questionValueKey === input.questionValueKey &&
+        item.answerTimestamp === input.answerTimestamp
+    );
+
+    if (!alreadyQueued) {
+      queue.push({
+        sessionId: input.sessionId,
+        questionValueKey: input.questionValueKey,
+        answerTimestamp: input.answerTimestamp,
+        queuedAtIso: new Date().toISOString(),
+      });
+      await savePendingQueue(queue);
+    }
+
+    await saveSession(session);
+    return 'pending';
+  }
 }
 
 export async function processPendingEvaluations(isOnline: boolean): Promise<number> {
@@ -193,7 +228,18 @@ export async function processPendingEvaluations(isOnline: boolean): Promise<numb
     }
 
     try {
-      answer.evaluation = evaluateTranscript(`Recorded answer at ${answer.timestamp}`);
+      const question = findQuestion(session, item.questionValueKey);
+      if (!question) {
+        continue;
+      }
+
+      const appSettings = await getAppSettings();
+      answer.evaluation = await evaluateInterviewAnswer({
+        question: question.value,
+        idealAnswer: question.answer,
+        audioFilePath: answer.audio_file_path,
+        promptSettings: appSettings.promptSettings,
+      });
       await saveSession(session);
       processed += 1;
     } catch {

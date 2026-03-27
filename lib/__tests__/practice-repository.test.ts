@@ -1,14 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { buildQuestionValueKey } from '@/lib/domain/interview-models';
+import { evaluateInterviewAnswer } from '@/lib/genai';
 import { createSessionFromQuestionList, getSessionById, saveSession } from '@/lib/repositories/session-repository';
+import { getAppSettings } from '@/lib/repositories/settings-repository';
 import { __resetJsonStorageForTests } from '@/lib/storage/json-storage';
 import {
-    appendAttempt,
-    listAttempts,
-    listPendingEvaluations,
-    processPendingEvaluations,
-    submitAttemptForEvaluation,
+  appendAttempt,
+  listAttempts,
+  listPendingEvaluations,
+  processPendingEvaluations,
+  submitAttemptForEvaluation,
 } from '../repositories/practice-repository';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -17,7 +19,17 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn(),
 }));
 
+jest.mock('../genai', () => ({
+  evaluateInterviewAnswer: jest.fn(),
+}));
+
+jest.mock('@/lib/repositories/settings-repository', () => ({
+  getAppSettings: jest.fn(),
+}));
+
 const storage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
+const mockEvaluateInterviewAnswer = evaluateInterviewAnswer as jest.MockedFunction<typeof evaluateInterviewAnswer>;
+const mockGetAppSettings = getAppSettings as jest.MockedFunction<typeof getAppSettings>;
 const backingStore = new Map<string, string>();
 
 function buildSessionQuestionList() {
@@ -46,6 +58,22 @@ describe('practice repository', () => {
     });
     storage.removeItem.mockImplementation(async (key: string) => {
       backingStore.delete(key);
+    });
+    mockGetAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coach',
+      },
+    });
+    mockEvaluateInterviewAnswer.mockResolvedValue({
+      score: 8,
+      candidate_answer: 'Candidate answer',
+      feedback: 'Solid answer.',
+      gaps_identified: ['Add more metrics'],
+      model_answer: 'Model answer',
     });
   });
 
@@ -118,6 +146,7 @@ describe('practice repository', () => {
 
     expect(answer?.evaluation).toBeDefined();
     expect(answer?.evaluation).not.toBeNull();
+    expect(mockEvaluateInterviewAnswer).toHaveBeenCalledTimes(1);
   });
 
   it('evaluates immediately when online', async () => {
@@ -145,5 +174,29 @@ describe('practice repository', () => {
     const answer = reloaded?.questionList.questions[0].answers?.find((item) => item.timestamp === attempt.timestamp);
     expect(answer?.evaluation).toBeDefined();
     expect(answer?.evaluation?.score).toBeGreaterThan(0);
+  });
+
+  it('queues evaluation when online processing fails', async () => {
+    const session = await createSession();
+
+    const attempt = await appendAttempt({
+      sessionId: session.id,
+      questionValueKey: getQuestionValueKey(),
+      transcript: 'Answer body',
+      audioFilePath: 'file:///attempt-online-fail.m4a',
+    });
+
+    mockEvaluateInterviewAnswer.mockRejectedValueOnce(new Error('service unavailable'));
+
+    const result = await submitAttemptForEvaluation({
+      sessionId: session.id,
+      questionValueKey: getQuestionValueKey(),
+      answerTimestamp: attempt.timestamp,
+      transcript: 'Answer body',
+      isOnline: true,
+    });
+
+    expect(result).toBe('pending');
+    expect((await listPendingEvaluations()).length).toBe(1);
   });
 });

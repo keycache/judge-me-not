@@ -1,15 +1,14 @@
 import {
-    EvaluationStrictness,
-    ModelVariant,
-    PromptSettings,
-    SessionPromptSnapshot,
+  EvaluationStrictness,
+  ModelVariant,
+  PromptSettings,
+  SessionPromptSnapshot,
 } from '@/lib/domain/session-models';
 import { Difficulty, InputMode } from '@/lib/interview-rules';
 
 const MODEL_VARIANT_MAP: Record<ModelVariant, string> = {
-  'gpt-4.1-mini': 'gpt-4.1-mini',
-  'gpt-4.1': 'gpt-4.1',
-  'gpt-4o-mini': 'gpt-4o-mini',
+  'gemini-2.5-flash-lite-preview': 'gemini-2.5-flash-lite-preview',
+  'gemini-3.1-flash-lite-preview': 'gemini-3.1-flash-lite-preview',
 };
 
 const STRICTNESS_INSTRUCTION_MAP: Record<EvaluationStrictness, string> = {

@@ -72,3 +72,8 @@ cd /Users/akashpatki/Documents/kash/code/moon/react-native/judge-me-not
 npx expo start --clear
 Then press a in the Expo terminal (instead of r first).
 ```
+
+### TODO
+* Image choose, change the file name displayed to image preview
+* change image preview in the modal after session is selected. The image in carousal should be maintained in aspect ratio and padded to diplay as a square
+* disable duplicate images being uploaded

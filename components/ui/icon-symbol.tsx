@@ -20,6 +20,7 @@ const MAPPING = {
   'chart.bar.fill': 'bar-chart',
   'person.fill': 'person',
   'gearshape.fill': 'settings',
+  'trash.fill': 'delete-outline',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;

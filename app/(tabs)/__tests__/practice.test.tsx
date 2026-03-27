@@ -137,7 +137,7 @@ describe('practice screen selectors + details', () => {
       activeSessionId: null,
       recordingLimitSeconds: 120,
       promptSettings: {
-        modelVariant: 'gpt-4.1-mini',
+        modelVariant: 'gemini-3.1-flash-lite-preview',
         evaluationStrictness: 'balanced',
         systemPersona: 'Coach',
       },

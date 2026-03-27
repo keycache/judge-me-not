@@ -9,11 +9,11 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppTheme } from '@/constants/app-theme';
 import { useApiKey } from '@/hooks/use-api-key';
 import {
-    DEFAULT_APP_SETTINGS,
-    EVALUATION_STRICTNESS_LEVELS,
-    EvaluationStrictness,
-    MODEL_VARIANTS,
-    ModelVariant,
+  DEFAULT_APP_SETTINGS,
+  EVALUATION_STRICTNESS_LEVELS,
+  EvaluationStrictness,
+  MODEL_VARIANTS,
+  ModelVariant,
 } from '@/lib/domain/session-models';
 import { resolvePromptTemplate } from '@/lib/prompt-template';
 import { getAppSettings, patchAppSettings } from '@/lib/repositories/settings-repository';
@@ -24,7 +24,7 @@ export default function ProfileScreen() {
   const { apiKey, isLoading, persistApiKey, removeApiKey } = useApiKey();
   const [draftKey, setDraftKey] = useState(apiKey ?? '');
   const [status, setStatus] = useState('');
-  const [modelVariant, setModelVariant] = useState<ModelVariant>('gpt-4.1-mini');
+  const [modelVariant, setModelVariant] = useState<ModelVariant>('gemini-3.1-flash-lite-preview');
   const [strictness, setStrictness] = useState<EvaluationStrictness>('balanced');
   const [systemPersona, setSystemPersona] = useState('Direct and constructive interview coach');
   const [recordingLimitSeconds, setRecordingLimitSeconds] = useState(
@@ -101,7 +101,7 @@ export default function ProfileScreen() {
       excludeBottomSafeArea
       contentBottomPadding={contentBottomPadding}>
       <AppCard title="API Settings">
-        <Text style={styles.label}>OpenAI-compatible API key</Text>
+        <Text style={styles.label}>Gemini API key</Text>
         <AppInput
           autoCapitalize="none"
           autoCorrect={false}
