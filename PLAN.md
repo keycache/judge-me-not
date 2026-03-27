@@ -6,7 +6,7 @@
 - Phase 3: Complete
 - Phase 4: Complete
 - Phase 5: In progress (re-scoped below)
-- Phase 6: Not started
+- Phase 6: Complete
 - Phase 7: Not started
 
 ---
@@ -291,6 +291,17 @@
 ---
 
 ## Phase 6 - Profile Data Management + Insights Baseline
+
+### Progress Tracker
+- Implemented:
+  - Repository-level full local reset path for sessions, settings, pending evaluations, and API key.
+  - Profile `Clear All Data` destructive action with confirmation UX.
+  - Insights baseline summary now reads schema-aligned session/question/answer/evaluation data and renders an empty state when no evaluations exist.
+  - Empty-state regression coverage added for Prepare, Practice, Insights, and app boot routing after clear-all.
+  - Insights expanded beyond baseline aggregates into per-session/session-switch views.
+
+### Status
+- Complete.
 
 ### Goals
 - Add Profile action to clear all app data and reset to clean slate:

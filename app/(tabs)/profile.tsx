@@ -1,6 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
@@ -17,11 +17,12 @@ import {
 } from '@/lib/domain/session-models';
 import { resolvePromptTemplate } from '@/lib/prompt-template';
 import { getAppSettings, patchAppSettings } from '@/lib/repositories/settings-repository';
+import { clearAllAppData } from '../../lib/repositories/app-reset';
 
 export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const contentBottomPadding = tabBarHeight;
-  const { apiKey, isLoading, persistApiKey, removeApiKey } = useApiKey();
+  const { apiKey, isLoading, loadApiKey, persistApiKey, removeApiKey } = useApiKey();
   const [draftKey, setDraftKey] = useState(apiKey ?? '');
   const [status, setStatus] = useState('');
   const [modelVariant, setModelVariant] = useState<ModelVariant>('gemini-3.1-flash-lite-preview');
@@ -31,6 +32,8 @@ export default function ProfileScreen() {
     DEFAULT_APP_SETTINGS.recordingLimitSeconds.toString()
   );
   const [promptStatus, setPromptStatus] = useState('');
+  const [resetStatus, setResetStatus] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     setDraftKey(apiKey ?? '');
@@ -82,6 +85,47 @@ export default function ProfileScreen() {
     setPromptStatus('Prompt and practice settings updated.');
   }
 
+  async function executeClearAllData() {
+    setIsResetting(true);
+
+    try {
+      await clearAllAppData();
+      await loadApiKey();
+      setDraftKey('');
+      setModelVariant(DEFAULT_APP_SETTINGS.promptSettings.modelVariant);
+      setStrictness(DEFAULT_APP_SETTINGS.promptSettings.evaluationStrictness);
+      setSystemPersona(DEFAULT_APP_SETTINGS.promptSettings.systemPersona);
+      setRecordingLimitSeconds(DEFAULT_APP_SETTINGS.recordingLimitSeconds.toString());
+      setStatus('');
+      setPromptStatus('');
+      setResetStatus('All local app data cleared. Returning to setup.');
+    } catch (error) {
+      setResetStatus(error instanceof Error ? error.message : 'Failed to clear local app data.');
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
+  function onConfirmClearAll() {
+    Alert.alert(
+      'Clear all app data?',
+      'This removes sessions, attempts, pending evaluations, saved settings, and the Gemini API key from this device.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: () => {
+            void executeClearAllData();
+          },
+        },
+      ]
+    );
+  }
+
   const promptPreview = resolvePromptTemplate({
     roleDescription: 'Senior React Native engineer role with architecture and behavioral rounds.',
     inputMode: 'text',
@@ -119,6 +163,20 @@ export default function ProfileScreen() {
 
       <AppCard title="App State">
         <Text style={styles.bodyText}>Current key status: {apiKey ? 'Configured' : 'Not Configured'}</Text>
+      </AppCard>
+
+      <AppCard title="Danger Zone">
+        <Text style={styles.bodyText}>
+          Clear every local session, attempt, pending evaluation, saved prompt setting, and the Gemini API key.
+        </Text>
+        <AppButton
+          label={isResetting ? 'Clearing...' : 'Clear All Data'}
+          onPress={onConfirmClearAll}
+          variant="ghost"
+          disabled={isResetting}
+          testID="profile-clear-all-data"
+        />
+        {resetStatus ? <Text style={styles.statusText}>{resetStatus}</Text> : null}
       </AppCard>
 
       <AppCard title="Prompt Settings">

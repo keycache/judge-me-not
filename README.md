@@ -77,3 +77,6 @@ Then press a in the Expo terminal (instead of r first).
 * Image choose, change the file name displayed to image preview
 * change image preview in the modal after session is selected. The image in carousal should be maintained in aspect ratio and padded to diplay as a square
 * disable duplicate images being uploaded
+* Generation Queue, remove the animation
+* Clear the file name(s) and/or text description  adter session generation is complete
+* Make API key display as a password
