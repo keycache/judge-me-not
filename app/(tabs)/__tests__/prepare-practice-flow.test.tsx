@@ -1,14 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import * as Network from 'expo-network';
 import type { ReactNode } from 'react';
 
+import { useApiKey } from '@/hooks/use-api-key';
 import { buildQuestionValueKey } from '@/lib/domain/interview-models';
 import { evaluateInterviewAnswer, generateInterviewQuestions } from '@/lib/genai';
-import { appendAttempt } from '@/lib/repositories/practice-repository';
-import { listSessions } from '@/lib/repositories/session-repository';
+import { clearAllAppData } from '@/lib/repositories/app-reset';
+import { appendAttempt, listPendingEvaluations } from '@/lib/repositories/practice-repository';
+import { createSessionFromQuestionList, listSessions, saveSession } from '@/lib/repositories/session-repository';
 import { __resetJsonStorageForTests } from '@/lib/storage/json-storage';
 import PrepareScreen from '../index';
+import InsightsScreen from '../insights';
 import PracticeScreen from '../practice';
+import ProfileScreen from '../profile';
+
+let networkStateListener: ((state: { isConnected?: boolean | null }) => void) | null = null;
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -33,7 +40,10 @@ jest.mock('expo-image-picker', () => ({
 
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: jest.fn(async () => ({ isConnected: true })),
-  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNetworkStateListener: jest.fn((listener: (state: { isConnected?: boolean | null }) => void) => {
+    networkStateListener = listener;
+    return { remove: jest.fn() };
+  }),
 }));
 
 jest.mock('expo-av', () => ({
@@ -75,10 +85,11 @@ jest.mock('@/components/ui/app-card', () => ({
 }));
 
 jest.mock('@/components/ui/app-button', () => ({
-  AppButton: ({ label, onPress, testID, disabled }: { label: string; onPress: () => void; testID?: string; disabled?: boolean }) => {
+  AppButton: ({ label, onPress, testID, disabled, loading }: { label: string; onPress: () => void; testID?: string; disabled?: boolean; loading?: boolean }) => {
     const rn = jest.requireActual('react-native');
     return (
       <rn.TouchableOpacity disabled={disabled} onPress={onPress} testID={testID}>
+        {loading ? <rn.Text testID={testID ? `${testID}-spinner` : undefined}>loading</rn.Text> : null}
         <rn.Text>{label}</rn.Text>
       </rn.TouchableOpacity>
     );
@@ -104,9 +115,15 @@ jest.mock('@/lib/genai', () => ({
   evaluateInterviewAnswer: jest.fn(),
 }));
 
+jest.mock('@/hooks/use-api-key', () => ({
+  useApiKey: jest.fn(),
+}));
+
 const storage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 const mockGenerateInterviewQuestions = generateInterviewQuestions as jest.MockedFunction<typeof generateInterviewQuestions>;
 const mockEvaluateInterviewAnswer = evaluateInterviewAnswer as jest.MockedFunction<typeof evaluateInterviewAnswer>;
+const mockGetNetworkStateAsync = Network.getNetworkStateAsync as jest.MockedFunction<typeof Network.getNetworkStateAsync>;
+const mockUseApiKey = useApiKey as jest.MockedFunction<typeof useApiKey>;
 const backingStore = new Map<string, string>();
 
 async function flushAsyncWork() {
@@ -121,6 +138,7 @@ describe('prepare to practice flow', () => {
     backingStore.clear();
     __resetJsonStorageForTests();
     jest.clearAllMocks();
+    networkStateListener = null;
 
     storage.getItem.mockImplementation(async (key: string) => backingStore.get(key) ?? null);
     storage.setItem.mockImplementation(async (key: string, value: string) => {
@@ -152,9 +170,17 @@ describe('prepare to practice flow', () => {
       gaps_identified: ['Add more concrete metrics'],
       model_answer: 'A strong answer should cover impact, mitigation, and learning outcomes.',
     });
+    mockGetNetworkStateAsync.mockResolvedValue({ isConnected: true });
+    mockUseApiKey.mockReturnValue({
+      apiKey: 'sk-existing',
+      isLoading: false,
+      loadApiKey: jest.fn(async () => 'sk-existing'),
+      persistApiKey: jest.fn(async (value: string) => value),
+      removeApiKey: jest.fn(async () => undefined),
+    });
   });
 
-  it('creates a generated session in Prepare and evaluates an attempt in Practice', async () => {
+  it('creates a generated session in Prepare, evaluates an attempt in Practice, and surfaces the result in Insights', async () => {
     const prepareScreen = render(<PrepareScreen />);
 
     fireEvent.changeText(
@@ -194,16 +220,18 @@ describe('prepare to practice flow', () => {
     fireEvent.press(practiceScreen.getByTestId('practice-past-answers-toggle'));
 
     await waitFor(() => {
-      expect(practiceScreen.getByText(`Audio: ${attempt.audio_file_path}`)).toBeTruthy();
-      expect(practiceScreen.getByText('Status: draft')).toBeTruthy();
+      expect(practiceScreen.getByText('Attempt #1')).toBeTruthy();
+      expect(practiceScreen.getByText('draft')).toBeTruthy();
+      expect(practiceScreen.getByTestId(`practice-attempt-submit-${attempt.timestamp}`)).toBeTruthy();
     });
 
-    fireEvent.press(practiceScreen.getByText('Submit'));
+    fireEvent.press(practiceScreen.getByTestId(`practice-attempt-submit-${attempt.timestamp}`));
 
     await waitFor(() => {
       expect(practiceScreen.getByText('Attempt evaluated online.')).toBeTruthy();
-      expect(practiceScreen.getByText('Status: completed')).toBeTruthy();
-      expect(practiceScreen.getByText('Score: 9/10')).toBeTruthy();
+      expect(practiceScreen.getByText('completed')).toBeTruthy();
+      expect(practiceScreen.getByText('9/10')).toBeTruthy();
+      expect(practiceScreen.getByText('I led mitigation and follow-up work.')).toBeTruthy();
     });
 
     expect(mockEvaluateInterviewAnswer).toHaveBeenCalledWith(
@@ -212,5 +240,260 @@ describe('prepare to practice flow', () => {
         audioFilePath: 'file:///attempt-1.m4a',
       })
     );
+
+    practiceScreen.unmount();
+
+    const insightsScreen = render(<InsightsScreen />);
+    await flushAsyncWork();
+
+    await waitFor(() => {
+      expect(insightsScreen.getByTestId('insights-readiness-metric')).toBeTruthy();
+      expect(insightsScreen.getByText('90%')).toBeTruthy();
+      expect(insightsScreen.getByText('Average score 9/10')).toBeTruthy();
+      expect(insightsScreen.getByText('Strongest category: Behavioral')).toBeTruthy();
+      expect(insightsScreen.getByText('Most frequent gap: Add more concrete metrics')).toBeTruthy();
+    });
+  });
+
+  it('queues an offline submit and auto-evaluates it after reconnect', async () => {
+    const prepareScreen = render(<PrepareScreen />);
+
+    fireEvent.changeText(
+      prepareScreen.getByTestId('prepare-text-description'),
+      'Senior platform engineer role with distributed systems and incident response ownership.'
+    );
+    fireEvent.changeText(prepareScreen.getByTestId('prepare-batch-size'), '2');
+    fireEvent.press(prepareScreen.getByTestId('prepare-generate-session'));
+
+    await waitFor(() => {
+      expect(prepareScreen.getByText('Incident Response Loop')).toBeTruthy();
+    });
+
+    const sessions = await listSessions();
+    const question = sessions[0].questionList.questions[0];
+    const attempt = await appendAttempt({
+      sessionId: sessions[0].id,
+      questionValueKey: buildQuestionValueKey(question),
+      transcript: 'I owned the mitigation plan and postmortem.',
+      audioFilePath: 'file:///attempt-2.m4a',
+    });
+
+    prepareScreen.unmount();
+    mockGetNetworkStateAsync.mockResolvedValueOnce({ isConnected: false });
+
+    const practiceScreen = render(<PracticeScreen />);
+    await flushAsyncWork();
+
+    fireEvent.press(practiceScreen.getByTestId('practice-past-answers-toggle'));
+
+    await waitFor(() => {
+      expect(practiceScreen.getByText('Network: Offline')).toBeTruthy();
+      expect(practiceScreen.getByTestId(`practice-attempt-submit-${attempt.timestamp}`)).toBeTruthy();
+    });
+
+    fireEvent.press(practiceScreen.getByTestId(`practice-attempt-submit-${attempt.timestamp}`));
+
+    await waitFor(() => {
+      expect(practiceScreen.getByText('Attempt queued for evaluation (offline).')).toBeTruthy();
+      expect(practiceScreen.getByText('pending')).toBeTruthy();
+    });
+
+    await expect(listPendingEvaluations()).resolves.toHaveLength(1);
+
+    expect(mockEvaluateInterviewAnswer).not.toHaveBeenCalled();
+
+    await act(async () => {
+      networkStateListener?.({ isConnected: true });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(practiceScreen.getByText('Auto-evaluated 1 pending attempt(s) after reconnect.')).toBeTruthy();
+      expect(practiceScreen.getByText('completed')).toBeTruthy();
+      expect(practiceScreen.getByText('9/10')).toBeTruthy();
+    });
+
+    await expect(listPendingEvaluations()).resolves.toHaveLength(0);
+
+    expect(mockEvaluateInterviewAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the selected practice session after an app restart', async () => {
+    const prepareScreen = render(<PrepareScreen />);
+
+    fireEvent.changeText(
+      prepareScreen.getByTestId('prepare-text-description'),
+      'Senior platform engineer role with distributed systems and incident response ownership.'
+    );
+    fireEvent.changeText(prepareScreen.getByTestId('prepare-batch-size'), '2');
+    fireEvent.press(prepareScreen.getByTestId('prepare-generate-session'));
+
+    await waitFor(() => {
+      expect(prepareScreen.getByText('Incident Response Loop')).toBeTruthy();
+    });
+
+    const generatedSessions = await listSessions();
+    const extraSession = createSessionFromQuestionList({
+      sessionNameFromModel: 'Architecture Recovery Loop',
+      questionList: {
+        questions: [
+          {
+            value: 'How do you recover a distributed system after a failed rollout?',
+            category: 'System Design',
+            difficulty: 'Hard',
+            answer: 'Cover rollback, mitigation, communications, and validation.',
+            answers: [],
+          },
+        ],
+      },
+      createdAt: new Date('2026-03-27T12:00:00.000Z'),
+    });
+    await saveSession(extraSession);
+
+    prepareScreen.unmount();
+
+    const firstPracticeScreen = render(<PracticeScreen />);
+    await flushAsyncWork();
+
+    fireEvent.press(firstPracticeScreen.getByTestId('practice-session-dropdown-trigger'));
+    fireEvent.press(firstPracticeScreen.getByTestId(`practice-dropdown-option-${extraSession.id}`));
+
+    await waitFor(() => {
+      expect(firstPracticeScreen.getByTestId('practice-selected-question-full-text').props.children).toBe(
+        'How do you recover a distributed system after a failed rollout?'
+      );
+    });
+
+    firstPracticeScreen.unmount();
+
+    const restartedPracticeScreen = render(<PracticeScreen />);
+    await flushAsyncWork();
+
+    await waitFor(() => {
+      expect(restartedPracticeScreen.getByText(extraSession.title)).toBeTruthy();
+      expect(restartedPracticeScreen.getByTestId('practice-selected-question-full-text').props.children).toBe(
+        'How do you recover a distributed system after a failed rollout?'
+      );
+    });
+
+    expect(generatedSessions).toHaveLength(1);
+  });
+
+  it('persists profile prompt settings across relaunch and propagates them into evaluation', async () => {
+    const profileScreen = render(<ProfileScreen />);
+    await flushAsyncWork();
+
+    fireEvent.press(profileScreen.getAllByText('gemini-2.5-flash-lite-preview')[0]);
+    fireEvent.press(profileScreen.getAllByText('strict')[0]);
+    fireEvent.changeText(profileScreen.getByDisplayValue('Direct and constructive interview coach'), 'Strict systems interviewer');
+    fireEvent.changeText(profileScreen.getByDisplayValue('120'), '180');
+    fireEvent.press(profileScreen.getByText('Save Prompt + Practice Settings'));
+
+    await waitFor(() => {
+      expect(profileScreen.getByText('Prompt and practice settings updated.')).toBeTruthy();
+    });
+
+    profileScreen.unmount();
+
+    const relaunchedProfile = render(<ProfileScreen />);
+    await flushAsyncWork();
+
+    await waitFor(() => {
+      expect(relaunchedProfile.getByDisplayValue('Strict systems interviewer')).toBeTruthy();
+      expect(relaunchedProfile.getByDisplayValue('180')).toBeTruthy();
+    });
+
+    relaunchedProfile.unmount();
+
+    const prepareScreen = render(<PrepareScreen />);
+    fireEvent.changeText(
+      prepareScreen.getByTestId('prepare-text-description'),
+      'Senior platform engineer role with distributed systems and incident response ownership.'
+    );
+    fireEvent.changeText(prepareScreen.getByTestId('prepare-batch-size'), '2');
+    fireEvent.press(prepareScreen.getByTestId('prepare-generate-session'));
+
+    await waitFor(() => {
+      expect(prepareScreen.getByText('Incident Response Loop')).toBeTruthy();
+    });
+
+    const sessions = await listSessions();
+    const question = sessions[0].questionList.questions[0];
+    const attempt = await appendAttempt({
+      sessionId: sessions[0].id,
+      questionValueKey: buildQuestionValueKey(question),
+      transcript: 'I owned the mitigation plan and postmortem.',
+      audioFilePath: 'file:///attempt-3.m4a',
+    });
+
+    prepareScreen.unmount();
+
+    const practiceScreen = render(<PracticeScreen />);
+    await flushAsyncWork();
+
+    await waitFor(() => {
+      expect(practiceScreen.getByText('Recording Cap: 180s')).toBeTruthy();
+    });
+
+    fireEvent.press(practiceScreen.getByTestId('practice-past-answers-toggle'));
+    fireEvent.press(practiceScreen.getByTestId(`practice-attempt-submit-${attempt.timestamp}`));
+
+    await waitFor(() => {
+      expect(practiceScreen.getByText('Attempt evaluated online.')).toBeTruthy();
+    });
+
+    expect(mockEvaluateInterviewAnswer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptSettings: {
+          modelVariant: 'gemini-2.5-flash-lite-preview',
+          evaluationStrictness: 'strict',
+          systemPersona: 'Strict systems interviewer',
+        },
+      })
+    );
+  });
+
+  it('can create a brand-new session in the same run after clear all data', async () => {
+    const seededSession = createSessionFromQuestionList({
+      sessionNameFromModel: 'Seed Session',
+      questionList: {
+        questions: [
+          {
+            value: 'Tell me about incident response ownership.',
+            category: 'Behavioral',
+            difficulty: 'Medium',
+            answer: 'Discuss leadership, mitigation, and follow-through.',
+            answers: [],
+          },
+        ],
+      },
+      createdAt: new Date('2026-03-27T09:00:00.000Z'),
+    });
+    await saveSession(seededSession);
+
+    await clearAllAppData();
+
+    const prepareScreen = render(<PrepareScreen />);
+    await flushAsyncWork();
+
+    await waitFor(() => {
+      expect(prepareScreen.getByTestId('prepare-no-sessions')).toBeTruthy();
+    });
+
+    fireEvent.changeText(
+      prepareScreen.getByTestId('prepare-text-description'),
+      'Senior platform engineer role with distributed systems and incident response ownership.'
+    );
+    fireEvent.changeText(prepareScreen.getByTestId('prepare-batch-size'), '2');
+    fireEvent.press(prepareScreen.getByTestId('prepare-generate-session'));
+
+    await waitFor(() => {
+      expect(prepareScreen.getByText('Incident Response Loop')).toBeTruthy();
+    });
+
+    const sessions = await listSessions();
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0].title).toBe('Incident Response Loop');
   });
 });

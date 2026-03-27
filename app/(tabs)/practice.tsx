@@ -24,7 +24,7 @@ import {
     submitAttemptForEvaluation,
 } from '@/lib/repositories/practice-repository';
 import { listSessions } from '@/lib/repositories/session-repository';
-import { getAppSettings } from '@/lib/repositories/settings-repository';
+import { getAppSettings, patchAppSettings } from '@/lib/repositories/settings-repository';
 
 type AttemptEvaluationTabKey = 'candidate_answer' | 'feedback' | 'gaps_identified' | 'model_answer';
 
@@ -245,9 +245,14 @@ export default function PracticeScreen() {
     setSessions(nextSessions);
     setRecordingLimitSeconds(settings.recordingLimitSeconds);
 
-    const nextSessionId =
+    const preferredSessionId =
       activeSessionId && nextSessions.some((session) => session.id === activeSessionId)
         ? activeSessionId
+        : settings.activeSessionId;
+
+    const nextSessionId =
+      preferredSessionId && nextSessions.some((session) => session.id === preferredSessionId)
+        ? preferredSessionId
         : nextSessions[0]?.id ?? null;
     setActiveSessionId(nextSessionId);
 
@@ -736,6 +741,8 @@ export default function PracticeScreen() {
     setActiveQuestionValueKey(nextSession?.questionList.questions[0] ? buildQuestionValueKey(nextSession.questionList.questions[0]) : null);
     setShowPastAnswers(false);
     setActiveAttemptTabs({});
+
+    void patchAppSettings({ activeSessionId: sessionId });
   }, [sessions]);
 
   const onSelectQuestion = useCallback((questionValueKey: string) => {

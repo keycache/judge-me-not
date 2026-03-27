@@ -186,6 +186,24 @@ describe('prepare session details modal', () => {
     });
   });
 
+  it('exposes an accessibility label for the session delete icon action', async () => {
+    const textSession = buildSession({
+      title: 'Backend Interview Prep',
+      sourceContext: {
+        inputMode: 'text',
+        sourceText: 'Senior backend role with distributed systems focus.',
+      },
+    });
+
+    mockListSessions.mockResolvedValue([textSession]);
+
+    const screen = render(<PrepareScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Delete Backend Interview Prep')).toBeTruthy();
+    });
+  });
+
   it('shows loading feedback while a session is being generated and uses model-proposed title', async () => {
     let resolveGeneration: ((value: { proposedSessionName?: string; questionList: Session['questionList'] }) => void) | null = null;
     const generationPromise = new Promise<{ proposedSessionName?: string; questionList: Session['questionList'] }>((resolve) => {

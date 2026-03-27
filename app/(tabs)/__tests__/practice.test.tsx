@@ -9,7 +9,7 @@ import {
     submitAttemptForEvaluation,
 } from '@/lib/repositories/practice-repository';
 import { listSessions } from '@/lib/repositories/session-repository';
-import { getAppSettings } from '@/lib/repositories/settings-repository';
+import { getAppSettings, patchAppSettings } from '@/lib/repositories/settings-repository';
 import PracticeScreen from '../practice';
 
 jest.mock('@react-navigation/bottom-tabs', () => ({
@@ -96,6 +96,16 @@ jest.mock('@/lib/repositories/session-repository', () => ({
 
 jest.mock('@/lib/repositories/settings-repository', () => ({
   getAppSettings: jest.fn(),
+  patchAppSettings: jest.fn(async (patch) => ({
+    activeSessionId: patch.activeSessionId ?? null,
+    recordingLimitSeconds: patch.recordingLimitSeconds ?? 120,
+    promptSettings: {
+      modelVariant: 'gemini-3.1-flash-lite-preview',
+      evaluationStrictness: 'balanced',
+      systemPersona: 'Coach',
+      ...patch.promptSettings,
+    },
+  })),
 }));
 
 jest.mock('@/lib/repositories/practice-repository', () => ({
@@ -109,6 +119,7 @@ jest.mock('@/lib/repositories/practice-repository', () => ({
 
 const mockListSessions = listSessions as jest.MockedFunction<typeof listSessions>;
 const mockGetAppSettings = getAppSettings as jest.MockedFunction<typeof getAppSettings>;
+const mockPatchAppSettings = patchAppSettings as jest.MockedFunction<typeof patchAppSettings>;
 const mockListAttempts = listAttempts as jest.MockedFunction<typeof listAttempts>;
 const mockListPendingEvaluations = listPendingEvaluations as jest.MockedFunction<typeof listPendingEvaluations>;
 const mockProcessPendingEvaluations = processPendingEvaluations as jest.MockedFunction<typeof processPendingEvaluations>;
@@ -157,6 +168,15 @@ async function renderPracticeScreen() {
 describe('practice screen selectors + details', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPatchAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coach',
+      },
+    });
     mockGetAppSettings.mockResolvedValue({
       activeSessionId: null,
       recordingLimitSeconds: 120,
@@ -428,6 +448,27 @@ describe('practice screen selectors + details', () => {
 
     await waitFor(() => {
       expect(screen.getByText('A stronger answer would cover the transition plan, resistance handling, and results.')).toBeTruthy();
+    });
+  });
+
+  it('exposes an accessibility label for the attempt playback icon control', async () => {
+    const question = buildQuestion('Tell me about a difficult migration.', 'Medium', 'Architecture');
+    const session = buildSession('s-1', 'Architecture Review', [question], '2026-03-27T10:00:00.000Z');
+
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([
+      {
+        audio_file_path: 'file:///tmp/migration.m4a',
+        timestamp: '2026-03-27T21:15:01.151Z',
+      },
+    ]);
+
+    const screen = await renderPracticeScreen();
+
+    fireEvent.press(screen.getByTestId('practice-past-answers-toggle'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Play attempt playback')).toBeTruthy();
     });
   });
 });

@@ -8,7 +8,7 @@
 - Phase 5: In progress (re-scoped below)
 - Phase 6: Complete
 - Phase 6.1: Complete
-- Phase 7: Not started
+- Phase 7: In progress
 
 ---
 
@@ -422,6 +422,31 @@
 
 ## Phase 7 - End-to-End Hardening and QA
 
+### Progress Tracker
+- Implemented:
+  - Refreshed the cross-screen Prepare -> Practice integration test to match the current Practice UI and verified evaluated-attempt state renders correctly.
+  - Extended integration coverage through Insights so the happy path now validates derived readiness metrics after evaluation.
+  - Added interruption-path integration coverage for offline draft submission followed by reconnect-driven pending evaluation processing.
+  - Persisted Practice session selection through settings and added restart recovery integration coverage for remounting the Practice screen on the previously selected session.
+  - Added integration coverage for Profile prompt-setting persistence and verified updated model variant, strictness, persona, and recording cap propagate into Practice evaluation.
+  - Added same-run recovery coverage for clearing all local data and successfully generating a brand-new session afterward.
+  - Added targeted accessibility-label regressions for icon-driven controls on Prepare and Practice.
+- Remaining:
+  - Final accessibility-label audit and durable test-ID pass across remaining key controls.
+  - Full QA checklist completion.
+
+### Status
+- In progress.
+
+### QA Status
+- Automated QA: Pass as of Mar 27, 2026.
+  - Full Jest suite passed: 20/20 suites, 98/98 tests.
+  - Latest full-suite run completed successfully after adding the remaining targeted Phase 7 tests for settings propagation, clear-all recovery, and accessibility-label coverage.
+  - Non-blocking environment noise observed during the run:
+    - shell startup warning from `.zprofile` referencing missing `/Users/akashpatki/.swiftly/env.shexport`
+    - Watchman recrawl warning for the workspace watch
+- Manual QA: Pending.
+
 ### Goals
 - Stabilize edge cases across generation, recording, evaluation, offline queue, and reset flows.
 - Add accessibility labels and durable test IDs on key controls.
@@ -439,6 +464,67 @@
 ### Automated Tests
 - High-value integration tests for happy path + interruption path.
 - Regression suite for no-repeat randomization, strictness prompt composition, schema conformance, and reset behavior.
+
+### Current Implemented Integration Coverage
+- `prepare_to_practice_happy_path_surfaces_evaluation_in_insights`
+  - Generates a session in Prepare, seeds an attempt, submits it in Practice, and verifies the evaluated result is reflected in Insights readiness metrics.
+- `prepare_to_practice_offline_submit_then_reconnect`
+  - Generates a session, submits a draft attempt while offline, verifies it is queued as pending, then simulates reconnect and asserts automatic evaluation completion.
+- `practice_session_selection_restores_after_restart`
+  - Switches Practice to a non-default session, unmounts/remounts the screen, and verifies the selected session/question restore from persisted settings.
+- `profile_prompt_settings_persist_and_propagate_to_evaluation`
+  - Saves Profile prompt/practice settings, verifies they persist across relaunch, then confirms Practice evaluation receives the updated prompt settings.
+- `clear_all_then_generate_new_session_in_same_run`
+  - Clears local data and verifies Prepare can create a brand-new session immediately without stale state leakage.
+
+### Final QA Checklist
+- Setup and boot
+  - Fresh install or cleared app state opens the setup/API entry flow instead of tabs.
+  - Saving a valid API key exits setup and unlocks the tabbed app shell.
+  - Relaunch after setup preserves the configured state and does not re-open setup unexpectedly.
+- Prepare flow
+  - Text mode validates empty input, invalid question counts, and difficulty selection correctly.
+  - Image mode enforces image-only flow, permission handling, max image count, and file-size guardrails.
+  - Session generation shows progress/loading state and creates a persisted session with a concise title.
+  - Generated session rows stay compact and open correct details when tapped.
+  - Session details render source text for text sessions and image carousel context for image sessions.
+  - Deleting a session removes it from the list immediately and it stays deleted after relaunch.
+- Practice selection and question surfacing
+  - Session dropdown, question dropdown, and random picker all work with current persisted sessions.
+  - Question dropdown stays filtered to the selected session.
+  - Random picker does not repeat within a cycle for the same session, then resets cleanly.
+  - Restarting the app restores the previously selected Practice session without corruption.
+  - Selected Question Details shows the question as the primary title with only category/difficulty badges.
+- Practice recording and attempts
+  - Starting/stopping recording updates recorder state and respects the configured recording cap.
+  - Saved attempts appear under `Past Answers` with numbered titles and correct draft/pending/completed state.
+  - Draft attempts can be deleted, while submitted/pending attempts cannot be deleted.
+  - Draft submit disables while in flight and shows a loading indicator until the request resolves.
+  - Audio playback starts, pauses, replays from the beginning after completion, and keeps the playback bar visible for recorded attempts.
+  - Evaluated attempts show score, status, and all four tabbed detail sections correctly.
+- Evaluation and offline resilience
+  - Online submit produces a structured evaluation with schema-aligned fields and persists it to the session.
+  - Offline submit queues the attempt, marks it pending, and does not lose the recording or attempt metadata.
+  - Returning online auto-processes queued evaluations and removes completed items from the pending queue.
+  - Failed online evaluation falls back to pending-queue behavior rather than losing the submit.
+- Insights
+  - Empty state appears when no evaluated attempts exist.
+  - Evaluated attempts update readiness, average score, strongest category, and top gap correctly.
+  - Session scope dropdown switches between all-session and single-session summaries without stale data.
+- Profile and reset
+  - Prompt settings and recording-limit settings save and persist across relaunch.
+  - Clear All Data confirmation requires explicit confirmation and cancel leaves data intact.
+  - Confirmed clear-all removes sessions, answers, pending queue, settings, and API key.
+  - After clear-all, the app returns to setup/empty states cleanly and can create a brand-new session in the same run.
+- Accessibility and durability
+  - Core controls expose stable test IDs and usable accessibility labels where interaction depends on icons or custom pressables. Targeted regression coverage now exists for Prepare delete icon and Practice playback icon controls.
+  - No critical flow depends only on color to communicate state.
+  - Text remains readable on supported device sizes without clipping important controls.
+- Final regression sweep
+  - Full automated suite passes before release candidate sign-off. Status: Pass on Mar 27, 2026 (`20/20` suites, `98/98` tests).
+  - Manual happy-path walkthrough completes without stale state across app restarts.
+  - Manual offline/reconnect walkthrough completes without queue leakage or duplicate evaluations.
+  - Manual clear-all walkthrough completes without leftover sessions, prompts, or pending evaluations.
 
 ### Automated Test Cases (Detailed)
 1. `e2e_happy_path_full_flow`
@@ -465,6 +551,10 @@
 - Upload image input and verify generated questions are produced via multimodal request path.
 12. `e2e_practice_audio_to_evaluation_via_genai_multimodal`
 - Submit recorded audio and verify structured evaluation fields are returned and persisted.
+13. `e2e_clear_all_then_generate_new_session_same_run`
+- Clear all local data, generate a fresh session immediately, and assert no stale session state leaks into the new run.
+14. `ui_icon_controls_expose_accessible_labels`
+- Assert icon-driven controls such as Prepare session delete and Practice attempt playback expose usable accessibility labels.
 
 ---
 
