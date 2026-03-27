@@ -10,6 +10,7 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { AppInput } from '@/components/ui/app-input';
 import { AppScreen } from '@/components/ui/app-screen';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AppTheme } from '@/constants/app-theme';
 import { Answer, buildQuestionValueKey } from '@/lib/domain/interview-models';
 import { DEFAULT_APP_SETTINGS, Session } from '@/lib/domain/session-models';
@@ -25,6 +26,43 @@ import {
 import { listSessions } from '@/lib/repositories/session-repository';
 import { getAppSettings } from '@/lib/repositories/settings-repository';
 
+type AttemptEvaluationTabKey = 'candidate_answer' | 'feedback' | 'gaps_identified' | 'model_answer';
+
+const ATTEMPT_EVALUATION_TABS: { key: AttemptEvaluationTabKey; label: string }[] = [
+  { key: 'candidate_answer', label: 'Candidate' },
+  { key: 'feedback', label: 'Feedback' },
+  { key: 'gaps_identified', label: 'Gaps' },
+  { key: 'model_answer', label: 'Model' },
+];
+
+function getAttemptStatusIconName(status: 'completed' | 'pending' | 'draft'): 'checkmark.circle.fill' | 'clock.fill' | 'pencil' {
+  if (status === 'completed') {
+    return 'checkmark.circle.fill';
+  }
+
+  if (status === 'pending') {
+    return 'clock.fill';
+  }
+
+  return 'pencil';
+}
+
+function getAttemptStatusColor(status: 'completed' | 'pending' | 'draft'): string {
+  if (status === 'completed') {
+    return AppTheme.colors.success;
+  }
+
+  if (status === 'pending') {
+    return AppTheme.colors.warning;
+  }
+
+  return AppTheme.colors.textMuted;
+}
+
+function getAttemptPlaybackIconName(isActive: boolean): 'play.fill' | 'pause.fill' {
+  return isActive ? 'pause.fill' : 'play.fill';
+}
+
 function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -36,6 +74,15 @@ function toOneLinePreview(input: string, maxLength = 64): string {
   }
 
   return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function formatAttemptTimestamp(input: string): string {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return input;
+  }
+
+  return date.toLocaleString();
 }
 
 interface DropdownOption {
@@ -94,7 +141,6 @@ export default function PracticeScreen() {
   const [recordingLimitSeconds, setRecordingLimitSeconds] = useState(DEFAULT_APP_SETTINGS.recordingLimitSeconds);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
-  const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingCompositeKeys, setPendingCompositeKeys] = useState<Set<string>>(new Set());
@@ -107,6 +153,8 @@ export default function PracticeScreen() {
   const [isSessionDropdownOpen, setIsSessionDropdownOpen] = useState(false);
   const [isQuestionDropdownOpen, setIsQuestionDropdownOpen] = useState(false);
   const [showPastAnswers, setShowPastAnswers] = useState(false);
+  const [activeAttemptTabs, setActiveAttemptTabs] = useState<Record<string, AttemptEvaluationTabKey>>({});
+  const [submittingAttemptTimestamps, setSubmittingAttemptTimestamps] = useState<Set<string>>(new Set());
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -356,7 +404,6 @@ export default function PracticeScreen() {
       audioFilePath: uri,
     });
 
-    setLastRecordingUri(uri);
     setStatus(`Attempt saved locally (${recordingSeconds}s). Submit to evaluate.`);
     saturatedCountRef.current = 0;
     hadUsableMicInputRef.current = false;
@@ -507,20 +554,36 @@ export default function PracticeScreen() {
         return;
       }
 
-      const fallbackTranscript = transcriptDraft.trim() || `Recorded answer at ${attempt.timestamp}`;
-      const result = await submitAttemptForEvaluation({
-        sessionId: activeSession.id,
-        questionValueKey: buildQuestionValueKey(activeQuestion),
-        answerTimestamp: attempt.timestamp,
-        transcript: fallbackTranscript,
-        isOnline,
-      });
+      if (submittingAttemptTimestamps.has(attempt.timestamp)) {
+        return;
+      }
 
-      setStatus(result === 'pending' ? 'Attempt queued for evaluation (offline).' : 'Attempt evaluated online.');
-      await refreshAttempts();
-      await refreshPendingCount();
+      const fallbackTranscript = transcriptDraft.trim() || `Recorded answer at ${attempt.timestamp}`;
+      setSubmittingAttemptTimestamps((current) => new Set(current).add(attempt.timestamp));
+
+      try {
+        const result = await submitAttemptForEvaluation({
+          sessionId: activeSession.id,
+          questionValueKey: buildQuestionValueKey(activeQuestion),
+          answerTimestamp: attempt.timestamp,
+          transcript: fallbackTranscript,
+          isOnline,
+        });
+
+        setStatus(result === 'pending' ? 'Attempt queued for evaluation (offline).' : 'Attempt evaluated online.');
+        await refreshAttempts();
+        await refreshPendingCount();
+      } catch {
+        setStatus('Attempt could not be submitted. Try again.');
+      } finally {
+        setSubmittingAttemptTimestamps((current) => {
+          const next = new Set(current);
+          next.delete(attempt.timestamp);
+          return next;
+        });
+      }
     },
-    [activeQuestion, activeSession, isOnline, refreshAttempts, refreshPendingCount, transcriptDraft]
+    [activeQuestion, activeSession, isOnline, refreshAttempts, refreshPendingCount, submittingAttemptTimestamps, transcriptDraft]
   );
 
   const onToggleAttemptPlayback = useCallback(
@@ -544,8 +607,18 @@ export default function PracticeScreen() {
         }
 
         if (currentStatus.isLoaded) {
+          const hasReachedEnd =
+            typeof currentStatus.durationMillis === 'number' &&
+            currentStatus.durationMillis > 0 &&
+            currentStatus.positionMillis >= currentStatus.durationMillis - 250;
+
+          if (hasReachedEnd) {
+            await soundRef.current.setPositionAsync(0);
+            setPlaybackPositionMillis(0);
+          }
+
           await soundRef.current.playAsync();
-          setStatus('Playing local recording.');
+          setStatus(hasReachedEnd ? 'Replaying local recording.' : 'Playing local recording.');
           return;
         }
       }
@@ -662,11 +735,13 @@ export default function PracticeScreen() {
     setActiveSessionId(sessionId);
     setActiveQuestionValueKey(nextSession?.questionList.questions[0] ? buildQuestionValueKey(nextSession.questionList.questions[0]) : null);
     setShowPastAnswers(false);
+    setActiveAttemptTabs({});
   }, [sessions]);
 
   const onSelectQuestion = useCallback((questionValueKey: string) => {
     setActiveQuestionValueKey(questionValueKey);
     setShowPastAnswers(false);
+    setActiveAttemptTabs({});
   }, []);
 
   const onPickRandomQuestion = useCallback(() => {
@@ -744,70 +819,19 @@ export default function PracticeScreen() {
 
       <AppCard title="Selected Question Details">
         {activeQuestion ? (
-          <>
-            <View style={styles.questionCard} testID="practice-selected-question-details">
-              <Text style={styles.questionTitle}>{activeSession?.title}</Text>
-              <Text style={styles.questionPrompt} testID="practice-selected-question-full-text">{activeQuestion.value}</Text>
-              <Text style={styles.metaText}>Category: {activeQuestion.category}</Text>
-              <Text style={styles.metaText}>Difficulty: {activeQuestion.difficulty}</Text>
-              <Text style={styles.metaText}>Expected answer focus: {activeQuestion.answer}</Text>
-            </View>
-
-            <Pressable testID="practice-past-answers-toggle" style={styles.collapsibleHeader} onPress={() => setShowPastAnswers((value) => !value)}>
-              <Text style={styles.questionTitle}>Past Answers ({attempts.length})</Text>
-              <Text style={styles.metaText}>{showPastAnswers ? 'Hide' : 'Show'}</Text>
-            </Pressable>
-
-            {showPastAnswers ? (
-              <View style={styles.collapsibleBody} testID="practice-past-answers-content">
-                {attempts.length === 0 ? <Text style={styles.bodyText}>No attempts yet for this question.</Text> : null}
-                {attempts.map((attempt) => {
-                  const isPending = isAttemptPending(attempt);
-                  const isSubmitted = Boolean(attempt.evaluation) || isPending;
-                  const attemptStatus = attempt.evaluation ? 'completed' : isPending ? 'pending' : 'draft';
-
-                  return (
-                    <View key={attempt.timestamp} style={styles.attemptRow}>
-                      <Text style={styles.bodyText}>{attempt.timestamp}</Text>
-                      <Text style={styles.metaText}>Status: {attemptStatus}</Text>
-                      <Text style={styles.bodyText}>Audio: {attempt.audio_file_path}</Text>
-                      {attempt.evaluation ? <Text style={styles.metaText}>Score: {attempt.evaluation.score}/10</Text> : null}
-                      <View style={styles.buttonRow}>
-                        {!isSubmitted ? <AppButton label="Submit" onPress={() => onSubmitAttempt(attempt)} /> : null}
-                        <AppButton
-                          label={activePlaybackAttemptTimestamp === attempt.timestamp && isPlaybackActive ? 'Pause' : 'Play'}
-                          onPress={() => onToggleAttemptPlayback(attempt.timestamp, attempt.audio_file_path)}
-                          variant="ghost"
-                        />
-                        {!isSubmitted ? (
-                          <AppButton label="Delete" onPress={() => onDeleteAttempt(attempt)} variant="ghost" />
-                        ) : null}
-                      </View>
-                      {activePlaybackAttemptTimestamp === attempt.timestamp ? (
-                        <View style={styles.playbackPanel}>
-                          <Slider
-                            minimumValue={0}
-                            maximumValue={Math.max(playbackDurationMillis, 1)}
-                            value={Math.min(playbackPositionMillis, Math.max(playbackDurationMillis, 1))}
-                            onSlidingComplete={onSeekPlayback}
-                            minimumTrackTintColor={AppTheme.colors.accent}
-                            maximumTrackTintColor={AppTheme.colors.borderStrong}
-                            thumbTintColor={AppTheme.colors.accent}
-                          />
-                          <View style={styles.playbackTimesRow}>
-                            <Text style={styles.metaText}>{formatMillis(playbackPositionMillis)}</Text>
-                            <Text style={styles.metaText}>{formatMillis(playbackDurationMillis)}</Text>
-                          </View>
-                        </View>
-                      ) : null}
-                    </View>
-                  );
-                })}
+          <View style={styles.questionCard} testID="practice-selected-question-details">
+            <Text style={styles.questionDetailTitle} testID="practice-selected-question-full-text">{activeQuestion.value}</Text>
+            <View style={styles.questionMetaRow}>
+              <View style={styles.questionMetaBadge} testID="practice-selected-question-category-badge">
+                <Text style={styles.questionMetaBadgeText}>{`Category: ${activeQuestion.category}`}</Text>
               </View>
-            ) : null}
-          </>
+              <View style={styles.questionMetaBadge} testID="practice-selected-question-difficulty-badge">
+                <Text style={styles.questionMetaBadgeText}>{`Difficulty: ${activeQuestion.difficulty}`}</Text>
+              </View>
+            </View>
+          </View>
         ) : (
-          <Text style={styles.bodyText}>Select a question to view full details and past answers.</Text>
+          <Text style={styles.bodyText}>Select a question to view full details.</Text>
         )}
       </AppCard>
 
@@ -839,11 +863,139 @@ export default function PracticeScreen() {
         />
 
         <Text style={styles.bodyText}>Recording Seconds: {recordingSeconds}</Text>
-        {lastRecordingUri ? <Text style={styles.metaText}>Last local audio: {lastRecordingUri}</Text> : null}
 
         {!activeSession || !activeQuestion ? <Text style={styles.bodyText}>No session/questions available. Generate one from Prepare first.</Text> : null}
 
         {status ? <Text style={styles.statusText}>{status}</Text> : null}
+      </AppCard>
+
+      <AppCard title="Past Answers">
+        {activeQuestion ? (
+          <>
+            <Pressable testID="practice-past-answers-toggle" style={styles.collapsibleHeader} onPress={() => setShowPastAnswers((value) => !value)}>
+              <Text style={styles.questionTitle}>{`Past Answers (${attempts.length})`}</Text>
+              <Text style={styles.metaText}>{showPastAnswers ? 'Hide' : 'Show'}</Text>
+            </Pressable>
+
+            {showPastAnswers ? (
+              <View style={styles.collapsibleBody} testID="practice-past-answers-content">
+                {attempts.length === 0 ? <Text style={styles.bodyText}>No attempts yet for this question.</Text> : null}
+                {attempts.map((attempt, index) => {
+                  const isPending = isAttemptPending(attempt);
+                  const isSubmitted = Boolean(attempt.evaluation) || isPending;
+                  const attemptStatus = attempt.evaluation ? 'completed' : isPending ? 'pending' : 'draft';
+                  const attemptNumber = attempts.length - index;
+                  const activeTab = activeAttemptTabs[attempt.timestamp] ?? 'candidate_answer';
+                  const hasAttemptAudio = Boolean(attempt.audio_file_path);
+                  const isActivePlaybackAttempt = activePlaybackAttemptTimestamp === attempt.timestamp;
+                  const attemptPlaybackPosition = isActivePlaybackAttempt ? playbackPositionMillis : 0;
+                  const attemptPlaybackDuration = isActivePlaybackAttempt ? playbackDurationMillis : 0;
+                  const isAttemptSubmitting = submittingAttemptTimestamps.has(attempt.timestamp);
+
+                  return (
+                    <View key={attempt.timestamp} style={styles.attemptRow} testID={`practice-attempt-row-${attempt.timestamp}`}>
+                      <View style={styles.attemptHeaderRow}>
+                        <View style={styles.attemptHeaderPrimary}>
+                          <Text style={styles.attemptTitle} testID={`practice-attempt-title-${attempt.timestamp}`}>{`Attempt #${attemptNumber}`}</Text>
+                          <View style={styles.attemptStatusBadge} testID={`practice-attempt-status-${attempt.timestamp}`}>
+                            <IconSymbol name={getAttemptStatusIconName(attemptStatus)} size={16} color={getAttemptStatusColor(attemptStatus)} />
+                            <Text style={styles.metaText}>{attemptStatus}</Text>
+                          </View>
+                        </View>
+                        <Pressable
+                          accessibilityLabel={activePlaybackAttemptTimestamp === attempt.timestamp && isPlaybackActive ? 'Pause attempt playback' : 'Play attempt playback'}
+                          onPress={() => onToggleAttemptPlayback(attempt.timestamp, attempt.audio_file_path)}
+                          style={styles.attemptPlaybackButton}
+                          testID={`practice-attempt-playback-${attempt.timestamp}`}>
+                          <IconSymbol
+                            name={getAttemptPlaybackIconName(isActivePlaybackAttempt && isPlaybackActive)}
+                            size={20}
+                            color={AppTheme.colors.textPrimary}
+                          />
+                        </Pressable>
+                      </View>
+                      <Text style={styles.metaText}>{formatAttemptTimestamp(attempt.timestamp)}</Text>
+                      {attempt.evaluation ? <Text style={styles.scoreText} testID={`practice-attempt-score-${attempt.timestamp}`}>{`${attempt.evaluation.score}/10`}</Text> : null}
+                      <View style={styles.buttonRow}>
+                        {!isSubmitted ? (
+                          <AppButton
+                            label="Submit"
+                            onPress={() => onSubmitAttempt(attempt)}
+                            loading={isAttemptSubmitting}
+                            disabled={isAttemptSubmitting}
+                            testID={`practice-attempt-submit-${attempt.timestamp}`}
+                          />
+                        ) : null}
+                        {!isSubmitted ? <AppButton label="Delete" onPress={() => onDeleteAttempt(attempt)} variant="ghost" /> : null}
+                      </View>
+                      {attempt.evaluation ? (
+                        <View style={styles.evaluationPanel}>
+                          <View style={styles.evaluationTabRow}>
+                            {ATTEMPT_EVALUATION_TABS.map((tab) => {
+                              const selected = tab.key === activeTab;
+                              return (
+                                <Pressable
+                                  key={tab.key}
+                                  testID={`practice-attempt-tab-${attempt.timestamp}-${tab.key}`}
+                                  onPress={() => {
+                                    setActiveAttemptTabs((current) => ({
+                                      ...current,
+                                      [attempt.timestamp]: tab.key,
+                                    }));
+                                  }}
+                                  style={[styles.evaluationTabButton, selected ? styles.evaluationTabButtonActive : null]}>
+                                  <Text numberOfLines={1} style={[styles.evaluationTabText, selected ? styles.evaluationTabTextActive : null]}>{tab.label}</Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                          <View style={styles.evaluationTabPanel} testID={`practice-attempt-tab-panel-${attempt.timestamp}`}>
+                            {activeTab === 'candidate_answer' ? <Text style={styles.bodyText}>{attempt.evaluation.candidate_answer}</Text> : null}
+                            {activeTab === 'feedback' ? <Text style={styles.bodyText}>{attempt.evaluation.feedback}</Text> : null}
+                            {activeTab === 'model_answer' ? <Text style={styles.bodyText}>{attempt.evaluation.model_answer}</Text> : null}
+                            {activeTab === 'gaps_identified' ? (
+                              attempt.evaluation.gaps_identified.length > 0 ? (
+                                <View style={styles.gapList}>
+                                  {attempt.evaluation.gaps_identified.map((gap, gapIndex) => (
+                                    <Text key={`${attempt.timestamp}-gap-${gapIndex.toString()}`} style={styles.bodyText}>{`• ${gap}`}</Text>
+                                  ))}
+                                </View>
+                              ) : (
+                                <Text style={styles.bodyText}>No gaps identified.</Text>
+                              )
+                            ) : null}
+                          </View>
+                        </View>
+                      ) : null}
+                      {hasAttemptAudio ? (
+                        <View
+                          style={[styles.playbackPanel, !isActivePlaybackAttempt ? styles.playbackPanelInactive : null]}
+                          testID={`practice-attempt-playback-panel-${attempt.timestamp}`}>
+                          <Slider
+                            disabled={!isActivePlaybackAttempt}
+                            minimumValue={0}
+                            maximumValue={Math.max(attemptPlaybackDuration, 1)}
+                            value={Math.min(attemptPlaybackPosition, Math.max(attemptPlaybackDuration, 1))}
+                            onSlidingComplete={onSeekPlayback}
+                            minimumTrackTintColor={AppTheme.colors.accent}
+                            maximumTrackTintColor={AppTheme.colors.borderStrong}
+                            thumbTintColor={AppTheme.colors.accent}
+                          />
+                          <View style={styles.playbackTimesRow}>
+                            <Text style={styles.metaText}>{formatMillis(attemptPlaybackPosition)}</Text>
+                            <Text style={styles.metaText}>{formatMillis(attemptPlaybackDuration)}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <Text style={styles.bodyText}>Select a question to review previous attempts.</Text>
+        )}
       </AppCard>
     </AppScreen>
   );
@@ -981,11 +1133,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textTransform: 'uppercase',
   },
-  questionPrompt: {
-    color: AppTheme.colors.textSecondary,
-    fontFamily: AppTheme.typography.bodyFamily,
-    fontSize: 14,
-    lineHeight: 20,
+  questionDetailTitle: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  questionMetaRow: {
+    flexDirection: 'row',
+    gap: AppTheme.spacing.xs,
+    flexWrap: 'wrap',
+  },
+  questionMetaBadge: {
+    paddingHorizontal: AppTheme.spacing.xs,
+    paddingVertical: AppTheme.spacing.xxs,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    backgroundColor: AppTheme.colors.surfacePrimary,
+  },
+  questionMetaBadgeText: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 12,
   },
   attemptRow: {
     borderWidth: 1,
@@ -994,8 +1163,100 @@ const styles = StyleSheet.create({
     padding: AppTheme.spacing.sm,
     gap: AppTheme.spacing.xs,
   },
+  attemptTitle: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 17,
+    textTransform: 'uppercase',
+    flexShrink: 1,
+  },
+  attemptHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: AppTheme.spacing.xs,
+  },
+  attemptHeaderPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AppTheme.spacing.xs,
+    flex: 1,
+    minWidth: 0,
+  },
+  attemptStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AppTheme.spacing.xxs,
+    paddingHorizontal: AppTheme.spacing.xs,
+    paddingVertical: AppTheme.spacing.xxs,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    backgroundColor: AppTheme.colors.surfacePrimary,
+    flexShrink: 0,
+  },
+  attemptPlaybackButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfacePrimary,
+  },
+  scoreText: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 28,
+    lineHeight: 30,
+  },
+  evaluationPanel: {
+    gap: AppTheme.spacing.sm,
+  },
+  evaluationTabRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    borderBottomWidth: 1,
+    borderBottomColor: AppTheme.colors.borderStrong,
+  },
+  evaluationTabButton: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppTheme.colors.surfacePrimary,
+    paddingHorizontal: AppTheme.spacing.xs,
+    paddingVertical: AppTheme.spacing.sm,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  evaluationTabButtonActive: {
+    borderBottomColor: AppTheme.colors.accent,
+    backgroundColor: AppTheme.colors.surfaceTertiary,
+  },
+  evaluationTabText: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.bodyFamily,
+    fontSize: 10,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  evaluationTabTextActive: {
+    color: AppTheme.colors.textPrimary,
+  },
+  evaluationTabPanel: {
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    backgroundColor: AppTheme.colors.surfacePrimary,
+    padding: AppTheme.spacing.sm,
+  },
+  gapList: {
+    gap: AppTheme.spacing.xs,
+  },
   playbackPanel: {
     gap: AppTheme.spacing.xs,
+  },
+  playbackPanelInactive: {
+    opacity: 0.72,
   },
   playbackTimesRow: {
     flexDirection: 'row',

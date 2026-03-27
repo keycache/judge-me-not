@@ -21,6 +21,11 @@ const MAPPING = {
   'person.fill': 'person',
   'gearshape.fill': 'settings',
   'trash.fill': 'delete-outline',
+  'checkmark.circle.fill': 'check-circle',
+  'clock.fill': 'schedule',
+  'play.fill': 'play-arrow',
+  'pause.fill': 'pause',
+  pencil: 'edit',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;

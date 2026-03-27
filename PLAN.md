@@ -7,6 +7,7 @@
 - Phase 4: Complete
 - Phase 5: In progress (re-scoped below)
 - Phase 6: Complete
+- Phase 6.1: Complete
 - Phase 7: Not started
 
 ---
@@ -348,6 +349,74 @@
 - Assert session/question selectors and controls handle empty data safely.
 10. `insights_empty_state_after_clear_all`
 - Assert insights renders no-data placeholder without exceptions.
+
+---
+
+## Phase 6.1 - Practice Tab UX Refinement and Playback Polish
+
+### Progress Tracker
+- Implemented:
+  - Practice answer cards now use numbered attempt titles (`Attempt #n`) instead of timestamps as the primary label.
+  - Draft, pending, and completed attempts render compact status badges with icon-based state indicators.
+  - Playback control moved into the attempt header as an icon button and replay now correctly restarts finished audio from the beginning.
+  - Playback scrub bar now persists for every attempt that has local audio instead of only appearing while active.
+  - Audio file-path text was removed from Practice answer surfaces before and after submission.
+  - Evaluated attempts now render tabbed answer details for `candidate_answer`, `feedback`, `gaps_identified`, and `model_answer`.
+  - Attempt score styling was increased for clearer scanability.
+  - Selected Question Details was simplified to use the question text as the main title, removed expected-answer copy, and converted category/difficulty metadata into subtle inline badges.
+  - Practice screen layout was reordered so `Question Runner` appears before `Past Answers`, with `Past Answers` now anchored as the last section on the page.
+  - Draft attempt submission now shows an in-flight spinner and disables repeat taps until the submit request settles.
+
+### Status
+- Complete.
+
+### Goals
+- Improve scanability and usability of Practice attempt cards.
+- Reduce unnecessary visual noise in question details and answer history.
+- Make playback behavior reliable and consistently discoverable.
+- Prevent duplicate submits for draft attempts during evaluation handoff.
+
+### Deliverables
+- Practice attempt card redesign with compact header actions and status affordances.
+- Persistent playback timeline for attempts with local recordings.
+- Tabbed evaluated-answer detail panel.
+- Simplified selected-question summary card.
+- Reordered Practice layout with `Past Answers` at the bottom.
+- Disabled submit + loading indicator state for in-flight draft submissions.
+
+### Visible UI Test
+- Open Practice, select a question, and verify the question text is the primary title in Selected Question Details.
+- Verify Category and Difficulty render as subtle badge-style labels on one row.
+- Expand `Past Answers` and verify numbered attempts, compact status display, header-level playback icon, and always-visible playback bar for recorded attempts.
+- Play an attempt to completion, then tap play again and verify the same clip replays immediately.
+- Submit a draft attempt and verify the Submit control disables and shows a spinner until the request resolves.
+- Confirm `Question Runner` appears above `Past Answers` in the overall page order.
+
+### Automated Tests
+- Practice selector rendering and session-to-question filtering tests.
+- Selected-question detail rendering tests.
+- Past-answer collapsible visibility and reset tests.
+- Evaluated-attempt tab content tests.
+- Persistent playback panel rendering tests.
+- Draft submit in-flight loading-state test.
+
+### Automated Test Cases (Detailed)
+1. `practice_disables_draft_submit_and_shows_spinner_while_submission_is_in_flight`
+- Mocks a pending submit request, presses Submit on a draft attempt, and asserts the submit action is only invoked once while spinner UI is visible.
+2. `practice_renders_session_and_question_dropdown_triggers`
+- Verifies the two selector entry points render on initial load.
+3. `practice_question_dropdown_filters_by_selected_session`
+- Switches sessions and asserts the question dropdown only shows questions for the selected session.
+4. `practice_selected_question_details_render_question_title_and_metadata_badges`
+- Asserts the selected question text renders as the primary detail content and that `Category` / `Difficulty` badges appear without the old expected-answer text block.
+5. `practice_selector_labels_are_user_friendly_one_line_previews`
+- Verifies session and question dropdown options use truncated one-line preview labels for long content.
+6. `practice_past_answers_collapsible_resets_when_question_changes`
+- Opens `Past Answers`, confirms attempt content is shown, switches questions, and asserts the collapsible returns to its default closed state.
+7. `practice_evaluated_answer_details_render_inside_tabbed_panels`
+- Confirms evaluated attempts expose tabbed `candidate_answer`, `feedback`, `gaps_identified`, and `model_answer` content.
+8. `practice_attempt_playback_panel_is_visible_for_recorded_attempts`
+- Verifies attempts with local audio render a persistent playback panel even before playback begins.
 
 ---
 
