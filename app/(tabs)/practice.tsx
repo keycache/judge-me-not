@@ -203,7 +203,7 @@ export default function PracticeScreen() {
     () =>
       activeQuestions.map((question) => ({
         key: buildQuestionValueKey(question),
-        label: toOneLinePreview(question.value, 96),
+        label: `[${question.difficulty}][${question.category}] ${toOneLinePreview(question.value, 88)}`,
       })),
     [activeQuestions]
   );
