@@ -27,6 +27,26 @@ import { createSessionFromQuestionList, deleteSession, listSessions, saveSession
 import { getAppSettings } from '@/lib/repositories/settings-repository';
 import { resolveSessionTitle } from '@/lib/session-title';
 
+function buildImageDedupeKey(asset: ImagePicker.ImagePickerAsset): string {
+  if (typeof asset.assetId === 'string' && asset.assetId.trim().length > 0) {
+    return `asset:${asset.assetId.trim()}`;
+  }
+
+  const fallbackParts = [
+    asset.fileName,
+    asset.fileSize?.toString(),
+    asset.width?.toString(),
+    asset.height?.toString(),
+    asset.mimeType,
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+  if (fallbackParts.length > 0) {
+    return `fallback:${fallbackParts.join('::')}`;
+  }
+
+  return `uri:${asset.uri}`;
+}
+
 export default function PrepareScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { width: windowWidth } = useWindowDimensions();
@@ -97,10 +117,17 @@ export default function PrepareScreen() {
 
   const addPickedAsset = useCallback(
     (asset: ImagePicker.ImagePickerAsset) => {
+      const dedupeKey = buildImageDedupeKey(asset);
       const nextImage: ImageInput = {
         uri: asset.uri,
         fileSizeBytes: asset.fileSize ?? 0,
+        dedupeKey,
       };
+
+      if (images.some((image) => image.dedupeKey === dedupeKey)) {
+        setValidationErrors(['This image has already been added.']);
+        return;
+      }
 
       const nextImages = [...images, nextImage];
       const validation = validateImageSelection(nextImages);

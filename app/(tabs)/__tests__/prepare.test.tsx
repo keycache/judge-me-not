@@ -237,6 +237,49 @@ describe('prepare session details modal', () => {
     });
   });
 
+  it('does not allow the same image to be uploaded more than once', async () => {
+    const firstAsset = {
+      uri: 'file:///tmp/duplicate-preview-a.png',
+      fileSize: 524288,
+      width: 600,
+      height: 600,
+      assetId: 'asset-library-1',
+    } as ImagePicker.ImagePickerAsset;
+    const secondAsset = {
+      uri: 'file:///tmp/duplicate-preview-b.png',
+      fileSize: 524288,
+      width: 600,
+      height: 600,
+      assetId: 'asset-library-1',
+    } as ImagePicker.ImagePickerAsset;
+
+    mockLaunchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [firstAsset],
+    });
+    mockLaunchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [secondAsset],
+    });
+
+    const screen = render(<PrepareScreen />);
+
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
+      expect(screen.queryByTestId('prepare-image-preview-1')).toBeNull();
+      expect(screen.getByText('This image has already been added.')).toBeTruthy();
+    });
+  });
+
   it('shows loading feedback while a session is being generated and uses model-proposed title', async () => {
     let resolveGeneration: ((value: { proposedSessionName?: string; questionList: Session['questionList'] }) => void) | null = null;
     const generationPromise = new Promise<{ proposedSessionName?: string; questionList: Session['questionList'] }>((resolve) => {

@@ -4,6 +4,7 @@ export type InputMode = 'text' | 'image';
 export interface ImageInput {
   uri: string;
   fileSizeBytes: number;
+  dedupeKey: string;
 }
 
 export interface ValidationResult {
