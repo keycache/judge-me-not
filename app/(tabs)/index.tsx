@@ -61,6 +61,7 @@ export default function PrepareScreen() {
   const contentBottomPadding = tabBarHeight;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mode, setMode] = useState<InputMode>('text');
+  const [imageSourceTab, setImageSourceTab] = useState<'gallery' | 'camera'>('gallery');
   const [textDescription, setTextDescription] = useState('');
   const [images, setImages] = useState<ImageInput[]>([]);
   const [questionCount, setQuestionCount] = useState('20');
@@ -329,12 +330,27 @@ export default function PrepareScreen() {
           />
         ) : (
           <View style={styles.imageComposer}>
-            <View style={styles.row}>
-              <View style={styles.flexButton}>
-                <AppButton testID="prepare-pick-gallery" label="Gallery" onPress={onPickFromGallery} />
-              </View>
-              <View style={styles.flexButton}>
-                <AppButton testID="prepare-open-camera" label="Take Photo" onPress={onTakePhoto} variant="ghost" />
+            <View style={styles.nestedTabsContainer}>
+              <Text style={styles.nestedTabsLabel}>Image Source</Text>
+              <View style={styles.nestedTabsRow}>
+                <Pressable
+                  testID="prepare-pick-gallery"
+                  style={[styles.nestedTabButton, imageSourceTab === 'gallery' ? styles.nestedTabButtonActive : null]}
+                  onPress={() => {
+                    setImageSourceTab('gallery');
+                    void onPickFromGallery();
+                  }}>
+                  <Text style={[styles.nestedTabText, imageSourceTab === 'gallery' ? styles.nestedTabTextActive : null]}>Gallery</Text>
+                </Pressable>
+                <Pressable
+                  testID="prepare-open-camera"
+                  style={[styles.nestedTabButton, imageSourceTab === 'camera' ? styles.nestedTabButtonActive : null]}
+                  onPress={() => {
+                    setImageSourceTab('camera');
+                    void onTakePhoto();
+                  }}>
+                  <Text style={[styles.nestedTabText, imageSourceTab === 'camera' ? styles.nestedTabTextActive : null]}>Take Photo</Text>
+                </Pressable>
               </View>
             </View>
             <Text style={styles.hintText}>Max {MAX_IMAGES} images, each up to {Math.round(MAX_IMAGE_SIZE_BYTES / (1024 * 1024))}MB.</Text>
@@ -510,25 +526,29 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     gap: AppTheme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: AppTheme.colors.borderStrong,
   },
   toggleButton: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderStrong,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+    backgroundColor: AppTheme.colors.surfacePrimary,
     paddingVertical: AppTheme.spacing.sm,
-    paddingHorizontal: AppTheme.spacing.md,
+    paddingHorizontal: AppTheme.spacing.sm,
     borderRadius: AppTheme.radius.none,
   },
   toggleButtonActive: {
-    borderColor: AppTheme.colors.accent,
+    borderBottomColor: AppTheme.colors.accent,
     backgroundColor: AppTheme.colors.surfaceTertiary,
   },
   toggleText: {
     color: AppTheme.colors.textMuted,
     textAlign: 'center',
-    fontFamily: AppTheme.typography.bodyFamily,
-    fontSize: 13,
+    fontFamily: AppTheme.typography.headingFamily,
+    textTransform: 'uppercase',
+    fontSize: 12,
+    letterSpacing: 0.4,
   },
   toggleTextActive: {
     color: AppTheme.colors.textPrimary,
@@ -562,8 +582,46 @@ const styles = StyleSheet.create({
   imageComposer: {
     gap: AppTheme.spacing.sm,
   },
-  flexButton: {
+  nestedTabsContainer: {
+    marginLeft: AppTheme.spacing.md,
+    paddingLeft: AppTheme.spacing.sm,
+    borderLeftWidth: 1,
+    borderLeftColor: AppTheme.colors.borderStrong,
+    gap: AppTheme.spacing.xs,
+  },
+  nestedTabsLabel: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  nestedTabsRow: {
+    flexDirection: 'row',
+    gap: AppTheme.spacing.xs,
+  },
+  nestedTabButton: {
     flex: 1,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    paddingVertical: AppTheme.spacing.xs,
+    paddingHorizontal: AppTheme.spacing.sm,
+  },
+  nestedTabButtonActive: {
+    borderColor: AppTheme.colors.accent,
+    backgroundColor: AppTheme.colors.surfaceTertiary,
+  },
+  nestedTabText: {
+    color: AppTheme.colors.textMuted,
+    textAlign: 'center',
+    fontFamily: AppTheme.typography.bodyFamily,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  nestedTabTextActive: {
+    color: AppTheme.colors.textPrimary,
   },
   imagePreviewStrip: {
     flexDirection: 'row',
