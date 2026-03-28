@@ -29,10 +29,10 @@ import { getAppSettings, patchAppSettings } from '@/lib/repositories/settings-re
 type AttemptEvaluationTabKey = 'candidate_answer' | 'feedback' | 'gaps_identified' | 'model_answer';
 
 const ATTEMPT_EVALUATION_TABS: { key: AttemptEvaluationTabKey; label: string }[] = [
-  { key: 'candidate_answer', label: 'Candidate' },
+  { key: 'candidate_answer', label: 'Answer' },
   { key: 'feedback', label: 'Feedback' },
   { key: 'gaps_identified', label: 'Gaps' },
-  { key: 'model_answer', label: 'Model' },
+  { key: 'model_answer', label: 'Ideal' },
 ];
 
 function getAttemptStatusIconName(status: 'completed' | 'pending' | 'draft'): 'checkmark.circle.fill' | 'clock.fill' | 'pencil' {
