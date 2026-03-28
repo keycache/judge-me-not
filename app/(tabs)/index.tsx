@@ -1,6 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
@@ -46,12 +46,6 @@ export default function PrepareScreen() {
   const [questionCount, setQuestionCount] = useState('20');
   const [selectedDifficulties, setSelectedDifficulties] = useState<Difficulty[]>(['Easy', 'Medium', 'Hard']);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [progressByDifficulty, setProgressByDifficulty] = useState<Record<Difficulty, number>>({
-    Easy: 0,
-    Medium: 0,
-    Hard: 0,
-  });
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isGeneratingSession, setIsGeneratingSession] = useState(false);
@@ -68,11 +62,7 @@ export default function PrepareScreen() {
   }, [loadPersistedSessions]);
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
+    return undefined;
   }, []);
 
   const activeDifficulties = useMemo(
@@ -191,32 +181,9 @@ export default function PrepareScreen() {
     }
 
     setValidationErrors([]);
-  setIsGeneratingSession(true);
-  setPendingSessionTitle(null);
-  setGenerationStatus(mode === 'image' ? 'Analyzing images and drafting questions...' : 'Reading role context and drafting questions...');
-    setProgressByDifficulty({ Easy: 0, Medium: 0, Hard: 0 });
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      setProgressByDifficulty((current) => {
-        const next = { ...current };
-
-        for (const difficulty of activeDifficulties) {
-          next[difficulty] = Math.min(100, current[difficulty] + 20);
-        }
-
-        const finished = activeDifficulties.every((difficulty) => next[difficulty] >= 100);
-        if (finished && timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-
-        return next;
-      });
-    }, 250);
+    setIsGeneratingSession(true);
+    setPendingSessionTitle(null);
+    setGenerationStatus(mode === 'image' ? 'Analyzing images and drafting questions...' : 'Reading role context and drafting questions...');
 
     try {
       const appSettings = await getAppSettings();
@@ -248,12 +215,6 @@ export default function PrepareScreen() {
       setPendingSessionTitle(sessionNameFromModel);
       setGenerationStatus(`Creating "${sessionNameFromModel}"...`);
 
-      setProgressByDifficulty((current) => ({
-        Easy: activeDifficulties.includes('Easy') ? 100 : current.Easy,
-        Medium: activeDifficulties.includes('Medium') ? 100 : current.Medium,
-        Hard: activeDifficulties.includes('Hard') ? 100 : current.Hard,
-      }));
-
       const session = createSessionFromQuestionList({
         sessionNameFromModel,
         questionList: generationResult.questionList,
@@ -271,10 +232,6 @@ export default function PrepareScreen() {
       const message = error instanceof Error ? error.message : 'Session generation failed.';
       setValidationErrors([message]);
     } finally {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
       setIsGeneratingSession(false);
       setGenerationStatus('');
       setPendingSessionTitle(null);
@@ -345,7 +302,7 @@ export default function PrepareScreen() {
           <View style={styles.imageComposer}>
             <View style={styles.row}>
               <View style={styles.flexButton}>
-                <AppButton testID="prepare-pick-gallery" label="Pick From Gallery" onPress={onPickFromGallery} />
+                <AppButton testID="prepare-pick-gallery" label="Gallery" onPress={onPickFromGallery} />
               </View>
               <View style={styles.flexButton}>
                 <AppButton testID="prepare-open-camera" label="Take Photo" onPress={onTakePhoto} variant="ghost" />
@@ -374,6 +331,31 @@ export default function PrepareScreen() {
             ) : null}
           </View>
         )}
+
+        <AppButton
+          testID="prepare-generate-session"
+          label={isGeneratingSession ? 'Generating Session...' : 'Generate Session'}
+          onPress={onGenerate}
+          disabled={isGeneratingSession}
+        />
+        {isGeneratingSession ? (
+          <View testID="prepare-generation-loading" style={styles.loadingStateCard}>
+            <ActivityIndicator color={AppTheme.colors.accent} size="small" />
+            <View style={styles.loadingCopyColumn}>
+              <Text style={styles.loadingTitle}>{pendingSessionTitle ?? 'Generating session draft...'}</Text>
+              <Text style={styles.loadingText}>{generationStatus}</Text>
+            </View>
+          </View>
+        ) : null}
+        {validationErrors.length > 0 ? (
+          <View testID="prepare-validation-errors" style={styles.errorList}>
+            {validationErrors.map((error, index) => (
+              <Text key={`${error}-${index.toString()}`} style={styles.errorText}>
+                {error}
+              </Text>
+            ))}
+          </View>
+        ) : null}
       </AppCard>
 
       <AppCard title="Difficulty Tiers">
@@ -401,47 +383,6 @@ export default function PrepareScreen() {
           placeholder={`1-${MAX_QUESTIONS_PER_BATCH}`}
           value={questionCount}
         />
-      </AppCard>
-
-      <AppCard title="Generation Queue">
-        <AppButton
-          testID="prepare-generate-session"
-          label={isGeneratingSession ? 'Generating Session...' : 'Generate Session'}
-          onPress={onGenerate}
-          disabled={isGeneratingSession}
-        />
-        {isGeneratingSession ? (
-          <View testID="prepare-generation-loading" style={styles.loadingStateCard}>
-            <ActivityIndicator color={AppTheme.colors.accent} size="small" />
-            <View style={styles.loadingCopyColumn}>
-              <Text style={styles.loadingTitle}>{pendingSessionTitle ?? 'Generating session draft...'}</Text>
-              <Text style={styles.loadingText}>{generationStatus}</Text>
-            </View>
-          </View>
-        ) : null}
-        <View style={styles.progressColumn}>
-          {(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((difficulty) => {
-            const progress = progressByDifficulty[difficulty];
-            return (
-              <View key={difficulty} testID={`prepare-progress-${difficulty.toLowerCase()}`} style={styles.progressRow}>
-                <Text style={styles.progressLabel}>{difficulty}</Text>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${progress}%` }]} />
-                </View>
-                <Text style={styles.progressValue}>{progress}%</Text>
-              </View>
-            );
-          })}
-        </View>
-        {validationErrors.length > 0 ? (
-          <View testID="prepare-validation-errors" style={styles.errorList}>
-            {validationErrors.map((error, index) => (
-              <Text key={`${error}-${index.toString()}`} style={styles.errorText}>
-                {error}
-              </Text>
-            ))}
-          </View>
-        ) : null}
       </AppCard>
 
       <AppCard title="Past Sessions">
@@ -635,9 +576,6 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.typography.monoFamily,
     fontSize: 12,
   },
-  progressColumn: {
-    gap: AppTheme.spacing.xs,
-  },
   loadingStateCard: {
     borderWidth: 1,
     borderColor: AppTheme.colors.borderStrong,
@@ -662,35 +600,6 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.typography.bodyFamily,
     fontSize: 13,
     lineHeight: 18,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: AppTheme.spacing.sm,
-  },
-  progressLabel: {
-    width: 56,
-    color: AppTheme.colors.textSecondary,
-    fontFamily: AppTheme.typography.bodyFamily,
-    fontSize: 13,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 10,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderStrong,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: AppTheme.colors.accent,
-  },
-  progressValue: {
-    width: 44,
-    textAlign: 'right',
-    color: AppTheme.colors.textMuted,
-    fontFamily: AppTheme.typography.monoFamily,
-    fontSize: 12,
   },
   errorList: {
     borderWidth: 1,
