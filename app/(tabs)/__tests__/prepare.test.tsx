@@ -285,4 +285,61 @@ describe('prepare session details modal', () => {
       expect(screen.queryByTestId('prepare-generation-loading')).toBeNull();
     });
   });
+
+  it('clears text and uploaded images after successful session generation', async () => {
+    mockLaunchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file:///tmp/uploaded-preview.png',
+          fileSize: 524288,
+          width: 600,
+          height: 600,
+        } as ImagePicker.ImagePickerAsset,
+      ],
+    });
+
+    mockGenerateInterviewQuestions.mockResolvedValue({
+      proposedSessionName: 'Systems Design Loop',
+      questionList: {
+        questions: [
+          {
+            value: 'Tell me about a systems design decision.',
+            category: 'System Design',
+            difficulty: 'Hard',
+            answer: 'Explain trade-offs and impact.',
+            answers: [],
+          },
+        ],
+      },
+    });
+    mockCreateSessionFromQuestionList.mockImplementation(({ sessionNameFromModel, questionList }) =>
+      buildSession({
+        title: sessionNameFromModel,
+        questionList,
+      })
+    );
+    mockSaveSession.mockImplementation(async (session) => session);
+
+    const screen = render(<PrepareScreen />);
+
+    fireEvent.changeText(screen.getByTestId('prepare-text-description'), 'Senior platform engineer role with distributed systems focus.');
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('prepare-mode-text'));
+    fireEvent.changeText(screen.getByTestId('prepare-text-description'), 'Senior platform engineer role with distributed systems focus.');
+    fireEvent.changeText(screen.getByTestId('prepare-batch-size'), '2');
+    fireEvent.press(screen.getByTestId('prepare-generate-session'));
+
+    await waitFor(() => {
+      expect(mockSaveSession).toHaveBeenCalled();
+      expect(screen.getByDisplayValue('')).toBeTruthy();
+      expect(screen.queryByTestId('prepare-image-preview-0')).toBeNull();
+    });
+  });
 });

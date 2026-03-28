@@ -227,6 +227,8 @@ export default function PrepareScreen() {
       });
 
       await saveSession(session);
+      setTextDescription('');
+      setImages([]);
       await loadPersistedSessions();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Session generation failed.';
