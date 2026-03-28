@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "judge-me-now",
-    "slug": "judge-me-now",
+    "name": "judge-me-not",
+    "slug": "judge-me-not",
     "version": "1.0.0",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/images/icon.png",
-    "scheme": "judgemenow",
+    "scheme": "judgemenot",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -21,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.futureopen.judgemenow"
+      "package": "com.futureopen.judgemenot"
     },
     "web": {
       "output": "static",
@@ -49,8 +49,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "342dd983-4165-407a-b0a7-cf68f600474f"
+        "projectId": "63626ca4-08af-44d9-a94c-11606c3f1cb3"
       }
-    }
+    },
+    "owner": "futureopen"
   }
 }

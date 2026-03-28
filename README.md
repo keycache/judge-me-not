@@ -1,6 +1,6 @@
 # Judge Me Now
 
-Judge Me Now is an Expo/React Native interview practice app. It generates mock interview sessions from text descriptions or image inputs, lets users practice answers question by question, and stores sessions, attempts, and settings locally on device.
+Judge Me Not is an Expo/React Native interview practice app. It generates mock interview sessions from text descriptions or image inputs, lets users practice answers question by question, and stores sessions, attempts, and settings locally on device.
 
 ## Overview
 
