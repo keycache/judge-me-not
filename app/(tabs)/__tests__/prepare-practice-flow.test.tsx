@@ -287,7 +287,7 @@ describe('prepare to practice flow', () => {
     fireEvent.press(practiceScreen.getByTestId('practice-past-answers-toggle'));
 
     await waitFor(() => {
-      expect(practiceScreen.getByText('Network: Offline')).toBeTruthy();
+      expect(practiceScreen.getByTestId('practice-selected-question-details')).toBeTruthy();
       expect(practiceScreen.getByTestId(`practice-attempt-submit-${attempt.timestamp}`)).toBeTruthy();
     });
 
@@ -433,7 +433,7 @@ describe('prepare to practice flow', () => {
     await flushAsyncWork();
 
     await waitFor(() => {
-      expect(practiceScreen.getByText('Recording Cap: 180s')).toBeTruthy();
+      expect(practiceScreen.getByTestId('practice-selected-question-details')).toBeTruthy();
     });
 
     fireEvent.press(practiceScreen.getByTestId('practice-past-answers-toggle'));

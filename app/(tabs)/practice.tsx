@@ -869,10 +869,12 @@ export default function PracticeScreen() {
       <AppCard title="Past Answers">
         {activeQuestion ? (
           <>
-            <Pressable testID="practice-past-answers-toggle" style={styles.collapsibleHeader} onPress={() => setShowPastAnswers((value) => !value)}>
-              <Text style={styles.questionTitle}>{`Past Answers (${attempts.length})`}</Text>
-              <Text style={styles.metaText}>{showPastAnswers ? 'Hide' : 'Show'}</Text>
-            </Pressable>
+            <View style={styles.pastAnswersHeaderRow}>
+              <Text style={styles.bodyText}>{`Count: ${attempts.length}`}</Text>
+              <Pressable testID="practice-past-answers-toggle" onPress={() => setShowPastAnswers((value) => !value)}>
+                <Text style={styles.pastAnswersToggleText}>{showPastAnswers ? 'Hide' : 'Show'}</Text>
+              </Pressable>
+            </View>
 
             {showPastAnswers ? (
               <View style={styles.collapsibleBody} testID="practice-past-answers-content">
@@ -1108,23 +1110,19 @@ const styles = StyleSheet.create({
   questionCard: {
     gap: AppTheme.spacing.xs,
   },
-  collapsibleHeader: {
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderStrong,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-    padding: AppTheme.spacing.sm,
+  pastAnswersHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  pastAnswersToggleText: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 12,
+    textTransform: 'uppercase',
+  },
   collapsibleBody: {
     gap: AppTheme.spacing.sm,
-  },
-  questionTitle: {
-    color: AppTheme.colors.textPrimary,
-    fontFamily: AppTheme.typography.headingFamily,
-    fontSize: 14,
-    textTransform: 'uppercase',
   },
   questionDetailTitle: {
     color: AppTheme.colors.textPrimary,
