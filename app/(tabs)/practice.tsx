@@ -142,7 +142,6 @@ export default function PracticeScreen() {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-  const [pendingCount, setPendingCount] = useState(0);
   const [pendingCompositeKeys, setPendingCompositeKeys] = useState<Set<string>>(new Set());
   const [micLevel, setMicLevel] = useState(0);
   const [micDb, setMicDb] = useState<number | null>(null);
@@ -231,7 +230,6 @@ export default function PracticeScreen() {
 
   const refreshPendingCount = useCallback(async () => {
     const items = await listPendingEvaluations();
-    setPendingCount(items.length);
 
     const next = new Set<string>();
     for (const item of items) {
@@ -836,44 +834,36 @@ export default function PracticeScreen() {
                 <Text style={styles.questionMetaBadgeText}>{`Difficulty: ${activeQuestion.difficulty}`}</Text>
               </View>
             </View>
+
+            <View style={styles.meterRow}>
+              <Text style={styles.metaText}>Mic Level</Text>
+              <View style={styles.meterTrack}>
+                <View style={[styles.meterFill, { width: `${isRecording ? Math.max(4, Math.round(micLevel * 100)) : 0}%` }]} />
+              </View>
+              <Text style={styles.metaText}>{micDb !== null ? `${Math.round(micDb)} dB` : 'n/a'}</Text>
+            </View>
+
+            <AppButton
+              label={isRecording ? 'Stop Recording' : 'Start Recording'}
+              onPress={onToggleRecording}
+              variant={isRecording ? 'ghost' : 'primary'}
+            />
+
+            <Text style={styles.bodyText}>Recording Seconds: {recordingSeconds}</Text>
+
+            <AppInput
+              multiline
+              numberOfLines={3}
+              onChangeText={setTranscriptDraft}
+              placeholder="Optional notes used as candidate answer text when submitting"
+              value={transcriptDraft}
+            />
+
+            {status ? <Text style={styles.statusText}>{status}</Text> : null}
           </View>
         ) : (
           <Text style={styles.bodyText}>Select a question to view full details.</Text>
         )}
-      </AppCard>
-
-      <AppCard title="Question Runner">
-        <Text style={styles.bodyText}>Network: {isOnline ? 'Online' : 'Offline'}</Text>
-        <Text style={styles.bodyText}>Pending Evaluations: {pendingCount}</Text>
-        <Text style={styles.bodyText}>Recording Cap: {recordingLimitSeconds}s</Text>
-        <Text style={styles.bodyText}>Recorder: {isRecording ? 'Active' : 'Idle'}</Text>
-        <View style={styles.meterRow}>
-          <Text style={styles.metaText}>Mic Level</Text>
-          <View style={styles.meterTrack}>
-            <View style={[styles.meterFill, { width: `${isRecording ? Math.max(4, Math.round(micLevel * 100)) : 0}%` }]} />
-          </View>
-          <Text style={styles.metaText}>{micDb !== null ? `${Math.round(micDb)} dB` : 'n/a'}</Text>
-        </View>
-
-        <AppInput
-          multiline
-          numberOfLines={3}
-          onChangeText={setTranscriptDraft}
-          placeholder="Optional notes used as candidate answer text when submitting"
-          value={transcriptDraft}
-        />
-
-        <AppButton
-          label={isRecording ? 'Stop Recording' : 'Start Recording'}
-          onPress={onToggleRecording}
-          variant={isRecording ? 'ghost' : 'primary'}
-        />
-
-        <Text style={styles.bodyText}>Recording Seconds: {recordingSeconds}</Text>
-
-        {!activeSession || !activeQuestion ? <Text style={styles.bodyText}>No session/questions available. Generate one from Prepare first.</Text> : null}
-
-        {status ? <Text style={styles.statusText}>{status}</Text> : null}
       </AppCard>
 
       <AppCard title="Past Answers">
