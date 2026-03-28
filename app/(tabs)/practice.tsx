@@ -948,7 +948,7 @@ export default function PracticeScreen() {
                               );
                             })}
                           </View>
-                          <View style={styles.evaluationTabPanel} testID={`practice-attempt-tab-panel-${attempt.timestamp}`}>
+                          <ScrollView style={styles.evaluationTabPanel} testID={`practice-attempt-tab-panel-${attempt.timestamp}`} nestedScrollEnabled>
                             {activeTab === 'candidate_answer' ? <Text style={styles.bodyText}>{attempt.evaluation.candidate_answer}</Text> : null}
                             {activeTab === 'feedback' ? <Text style={styles.bodyText}>{attempt.evaluation.feedback}</Text> : null}
                             {activeTab === 'model_answer' ? <Text style={styles.bodyText}>{attempt.evaluation.model_answer}</Text> : null}
@@ -963,7 +963,7 @@ export default function PracticeScreen() {
                                 <Text style={styles.bodyText}>No gaps identified.</Text>
                               )
                             ) : null}
-                          </View>
+                          </ScrollView>
                         </View>
                       ) : null}
                       {hasAttemptAudio ? (
@@ -1239,6 +1239,7 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.borderSubtle,
     backgroundColor: AppTheme.colors.surfacePrimary,
     padding: AppTheme.spacing.sm,
+    height: '40%',
   },
   gapList: {
     gap: AppTheme.spacing.xs,
