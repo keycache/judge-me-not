@@ -9,6 +9,7 @@
 - Phase 6: Complete
 - Phase 6.1: Complete
 - Phase 7: In progress
+- Phase 8: Not started
 
 ---
 
@@ -558,8 +559,349 @@
 
 ---
 
+## Phase 8 - UX Polish
+
+Full-app UX polish pass based on the holistic review in `PROPOSAL.md`.
+Changes are sequenced so each sub-phase is shippable on its own and leaves the test suite green.
+
+### Sub-Phases
+- Phase 8A — Foundation (shared infra + hygiene)
+- Phase 8B — Prepare Screen
+- Phase 8C — Practice Screen
+- Phase 8D — Insights + Profile
+- Phase 8E — Navigation & Information Architecture
+
+---
+
+### Phase 8A — Foundation Polish
+
+#### Goals
+- Eliminate the root cause of layout shift on every screen by replacing inline status/error `<Text>` nodes with a shared toast system.
+- Replace the literal `"v"` caret with a proper icon on all three dropdown triggers (Prepare, Practice, Insights).
+- Extract the duplicated `SelectorDropdown` component into a shared UI primitive.
+- Delete the unused Expo starter scaffolding (`explore.tsx`, `modal.tsx`) that is inconsistent with the design system.
+
+#### Deliverables
+- `components/ui/toast.tsx` — absolute-positioned, auto-dismissing toast with `info` / `success` / `warning` variants and slide-up/fade animation. Exposed as a `useToast()` hook + `<ToastContainer />` component so any screen can call `showToast({ message, variant })`.
+- `components/ui/selector-dropdown.tsx` — shared modal dropdown extracted from `practice.tsx` and `insights.tsx`, replacing both local copies.
+- Add `'chevron.down': 'expand-more'` to the icon mapping in `icon-symbol.tsx` and `icon-symbol.ios.tsx`. Update all three dropdown caret `<Text>` nodes to use `<IconSymbol name="chevron.down" />`.
+- Remove `app/(tabs)/explore.tsx`, `app/modal.tsx`, and the `explore` `Tabs.Screen` entry from `app/(tabs)/_layout.tsx`.
+- All existing tests remain green; add unit tests for the toast component.
+
+#### Locked Decisions
+- Toast auto-dismiss after 3 seconds for `info`/`success`, 5 seconds for `warning`.
+- Toast replaces all `statusText`, `errorText`, and `errorList` inline patterns across all screens. Inline patterns are removed entirely (no dual display).
+- `SelectorDropdown` props interface is identical to today's local version so migration is a drop-in.
+
+#### Visible UI Test
+- Trigger an action that currently shows an inline amber status message on each screen and confirm a bottom-anchored toast appears instead with no card resize.
+- Observe that dropdown triggers now show a chevron icon rather than `"v"`.
+
+#### Automated Tests
+- `toast_renders_with_info_variant`
+- `toast_renders_with_success_variant_green_colour`
+- `toast_renders_with_warning_variant_amber_colour`
+- `toast_auto_dismisses_after_configured_duration`
+- `toast_does_not_close_early_when_message_changes`
+- `selector_dropdown_renders_options_and_selects`
+- `selector_dropdown_closes_on_backdrop_press`
+- `selector_dropdown_closes_on_option_press`
+
+#### Automated Test Cases (Detailed)
+1. `toast_renders_with_info_variant`
+   - Mount `<ToastContainer />` and call `showToast({ message: 'Saved.', variant: 'info' })`. Assert the toast text is visible.
+2. `toast_renders_with_success_variant_green_colour`
+   - Call `showToast({ message: 'Done.', variant: 'success' })`. Assert rendered style includes `AppTheme.colors.success`.
+3. `toast_renders_with_warning_variant_amber_colour`
+   - Call `showToast({ message: 'Error.', variant: 'warning' })`. Assert rendered style includes `AppTheme.colors.warning`.
+4. `toast_auto_dismisses_after_configured_duration`
+   - Using fake timers, advance time past the dismiss threshold. Assert toast is no longer visible.
+5. `toast_does_not_close_early_when_message_changes`
+   - Show two successive toasts and assert each completes its own dismiss cycle without early closure.
+6. `selector_dropdown_renders_options_and_selects`
+   - Mount shared `SelectorDropdown` with three options. Assert all options render; press one and assert callback fires with the correct key.
+7. `selector_dropdown_closes_on_backdrop_press`
+   - Mount with `visible={true}`. Press the backdrop. Assert `onClose` is called.
+8. `selector_dropdown_closes_on_option_press`
+   - Press any option row. Assert `onClose` is called.
+
+---
+
+### Phase 8B — Prepare Screen Polish
+
+#### Goals
+- Fix the core UX confusion where the Gallery / Take Photo buttons immediately launch a system picker instead of just selecting the source.
+- Eliminate card-height instability when validation errors appear and when generation starts.
+- Improve the image remove button quality and nested tab visual hierarchy.
+- Clarify the session-list delete affordance.
+
+#### Deliverables
+- **Tab/action separation:** Gallery and Take Photo buttons become pure source selectors (no side effect on press). A distinct `+ Add Image` button below them calls the picker for the currently selected source. The image strip and constraints hint are always rendered in the composer area (empty state: `MAX_IMAGES` dashed placeholder slots) so the card height is stable regardless of how many images have been added.
+- **Fixed-height status slot:** Reserve a single fixed-height container (`minHeight` matching the loading card) below the Generate Session button. Show either the loading state or validation errors in this one slot. Idle state is invisible but retains height so the button never moves.
+- **Image remove button:** Replace the `"x"` text overlay with `<IconSymbol name="xmark" />`. Add `'xmark': 'close'` to the icon mapping. Increase the touch target to 24×24 with `hitSlop={10}`.
+- **Nested tab hierarchy:** Wrap the Image Source sub-section in a `surfaceSecondary` background container with `borderSubtle` border and `xs` padding, replacing the left-border indent.
+- **Session list delete:** Give the session row a two-column layout — content (title + meta) on the left, trash icon in a fixed-width right column — so the icon never overlaps the title regardless of title length.
+
+#### Locked Decisions
+- The image strip always renders when Image Upload mode is active. Empty slots are indicated by dashed-border placeholder tiles.
+- The status slot is always allocated below the Generate button — no conditional rendering that changes card height.
+- Gallery remains the default selected source tab.
+
+#### Visible UI Test
+- Switch to Image Upload. Confirm Gallery tab highlights but no picker opens. Tap `+ Add Image` and confirm picker opens. Dismiss picker and confirm no state changed.
+- Upload one image. Confirm the strip adds a thumbnail without the card growing (the slot was already there).
+- Tap Generate. Observe loading card appears in the reserved slot with no layout shift. Dismiss and see the slot return to invisible without the button moving.
+- Submit with an empty text field. Confirm validation errors appear in the same slot below the button.
+- Tap the `×` remove button on an image thumbnail. Confirm it is a well-sized tap target.
+- Confirm the Image Source sub-section has a visible contained boundary distinguishing it from the top-level tab row.
+- Confirm trash icons on session rows stay right-aligned even with a long session title.
+
+#### Automated Tests
+- `prepare_gallery_tab_does_not_launch_picker_on_press`
+- `prepare_take_photo_tab_does_not_launch_picker_on_press`
+- `prepare_add_image_button_launches_gallery_picker_when_gallery_selected`
+- `prepare_add_image_button_launches_camera_when_camera_selected`
+- `prepare_image_strip_renders_placeholder_slots_when_empty`
+- `prepare_image_strip_fills_slot_after_image_added`
+- `prepare_status_slot_is_always_present_below_generate_button`
+- `prepare_validation_errors_render_in_status_slot`
+- `prepare_loading_state_renders_in_status_slot`
+- `prepare_remove_image_button_has_enlarged_hit_slop`
+
+#### Automated Test Cases (Detailed)
+1. `prepare_gallery_tab_does_not_launch_picker_on_press`
+   - Press `prepare-pick-gallery`. Assert `launchImageLibraryAsync` was **not** called.
+2. `prepare_take_photo_tab_does_not_launch_picker_on_press`
+   - Press `prepare-open-camera`. Assert `launchCameraAsync` was **not** called.
+3. `prepare_add_image_button_launches_gallery_picker_when_gallery_selected`
+   - Ensure Gallery tab is selected. Press `prepare-add-image`. Assert `launchImageLibraryAsync` called once.
+4. `prepare_add_image_button_launches_camera_when_camera_selected`
+   - Press Camera tab (no side effect), then press `prepare-add-image`. Assert `launchCameraAsync` called once.
+5. `prepare_image_strip_renders_placeholder_slots_when_empty`
+   - Switch to Image Upload mode with no images added. Assert `MAX_IMAGES` placeholder elements are visible.
+6. `prepare_image_strip_fills_slot_after_image_added`
+   - Mock gallery returning one asset. Press `prepare-add-image`. Assert one slot shows the thumbnail and remaining slots show placeholder.
+7. `prepare_status_slot_is_always_present_below_generate_button`
+   - Assert `prepare-status-slot` test ID exists in the tree in both idle and in-flight states.
+8. `prepare_validation_errors_render_in_status_slot`
+   - Submit with empty input. Assert error text appears inside `prepare-status-slot` and no new element is inserted outside it.
+9. `prepare_loading_state_renders_in_status_slot`
+   - Trigger generation. Assert loading indicator appears inside `prepare-status-slot`.
+10. `prepare_remove_image_button_has_enlarged_hit_slop`
+    - Assert `prepare-remove-image-0` has `hitSlop` prop with value `{top: 10, bottom: 10, left: 10, right: 10}` or equivalent.
+
+---
+
+### Phase 8C — Practice Screen Polish
+
+#### Goals
+- Replace developer-copy recording feedback with a polished recording timer and mic meter that only appear during active recording.
+- Give the recording button a visually distinct active state.
+- Reduce noise in the question detail card by collapsing the rarely-used notes input.
+- Improve session/question selection hierarchy.
+- Replace the plain Show/Hide text toggle on Past Answers with a chevron icon button.
+- Demote the attempt score from a large standalone heading to a compact badge.
+- Fix the erratic `height: '40%'` on the evaluation panel.
+
+#### Deliverables
+- **Recording timer:** Replace `"Recording Seconds: 12"` with a styled monospace counter (`0:12 / 2:00`) inside an accent-coloured progress bar. Rendered only when `isRecording` is true.
+- **Mic meter:** Hidden when not recording. Animates in at recording start and out on stop.
+- **Recording button active state:** When `isRecording` is true, render the button with warning-red border and background tint (new `styles.recordingActive` style), not just a label change.
+- **Notes input collapsed:** Replace the always-visible multiline `AppInput` with a ghost `+ Add notes` button. Pressing it expands the input inline. If `transcriptDraft` has content, show a single-line summary with an edit icon instead of the full expanded input.
+- **Session/question hierarchy:** Wrap the question selector and the random picker button in a subsection visually subordinate to the session selector (matching the approach used for Image Source in 8B). Move the shuffle action to a small ghost icon button (`<IconSymbol name="shuffle" />`) next to the question dropdown label, removing the full-width "Pick Random Question" button.
+- **Past Answers toggle:** Replace the `Show` / `Hide` `<Text>` pressable with `<IconSymbol name="chevron.right" />` rotated 90° (open) / 0° (closed). Keep the attempt count label next to it.
+- **Attempt score badge:** Remove the standalone `<Text style={styles.scoreText}>` that renders at `fontSize: 28`. Display `score/10` as a compact badge in the attempt header row alongside the status pill.
+- **Evaluation panel height:** Change `evaluationTabPanel` style from `height: '40%'` to `maxHeight: 220`. The inner `ScrollView` handles overflow; the panel size is now consistent across device sizes.
+
+#### Locked Decisions
+- Recording timer and mic meter are rendered conditionally (`isRecording` gate). They do not occupy space when idle.
+- Notes input state (`showNotes`) is local UI state; it does not affect any recorded data or test-ID-based test assertions on the result.
+- The full-width `AppButton` labelled "Pick Random Question" is removed and replaced by an icon button.
+- Attempt score `fontSize: 28` style is removed from Practice entirely.
+
+#### Visible UI Test
+- Tap Start Recording. Confirm the mic meter bar and timer appear. Tap Stop. Confirm both disappear.
+- While recording, confirm the button has a distinct visual style (red/warning tint) that reverts after stopping.
+- Confirm the notes area shows only `+ Add notes` by default. Tap it and confirm the input expands. Type content, stop, and confirm the collapsed summary shows the note preview.
+- Confirm the question selector is visually subordinate to the session selector (contained subsection).
+- Confirm "Pick Random Question" full-width button is gone; a small shuffle icon appears next to the question label.
+- Expand Past Answers. Confirm the collapse control is a chevron that rotates on toggle.
+- View an evaluated attempt. Confirm the score renders as a compact badge next to the status pill, not as a large standalone number.
+- Confirm the evaluation tab panel scrolls content without clipping at unpredictable heights.
+
+#### Automated Tests
+- `practice_recording_timer_hidden_when_idle`
+- `practice_recording_timer_visible_when_recording`
+- `practice_mic_meter_hidden_when_idle`
+- `practice_recording_button_has_active_style_while_recording`
+- `practice_notes_input_collapsed_by_default`
+- `practice_notes_input_expands_on_add_notes_press`
+- `practice_notes_collapsed_summary_shown_when_content_exists`
+- `practice_random_question_picker_is_icon_button_not_full_width`
+- `practice_past_answers_toggle_uses_chevron_icon`
+- `practice_attempt_score_renders_as_badge_in_header`
+- `practice_attempt_score_large_text_is_absent`
+- `practice_evaluation_panel_uses_max_height_not_percentage`
+
+#### Automated Test Cases (Detailed)
+1. `practice_recording_timer_hidden_when_idle`
+   - Assert `practice-recording-timer` test ID is absent from the tree when `isRecording` is false.
+2. `practice_recording_timer_visible_when_recording`
+   - Mock recording start. Assert `practice-recording-timer` appears and displays elapsed time.
+3. `practice_mic_meter_hidden_when_idle`
+   - Assert `practice-mic-meter` test ID is absent from the tree before recording starts.
+4. `practice_recording_button_has_active_style_while_recording`
+   - Mock recording start. Assert the recording toggle button has `practice-recording-button-active` test ID (or equivalent style marker indicating the active/warning state).
+5. `practice_notes_input_collapsed_by_default`
+   - Render Practice with a question selected. Assert the multiline `AppInput` for notes is not visible. Assert `practice-add-notes-button` is visible.
+6. `practice_notes_input_expands_on_add_notes_press`
+   - Press `practice-add-notes-button`. Assert the notes `AppInput` appears.
+7. `practice_notes_collapsed_summary_shown_when_content_exists`
+   - Press add-notes, type content, collapse. Assert `practice-notes-summary` test ID shows a truncated preview of the typed content.
+8. `practice_random_question_picker_is_icon_button_not_full_width`
+   - Assert no element with the text "Pick Random Question" exists as a full-width `AppButton`. Assert `practice-random-question-icon-button` test ID exists.
+9. `practice_past_answers_toggle_uses_chevron_icon`
+   - Assert `practice-past-answers-toggle` contains `<IconSymbol>` rather than a raw `<Text>` node with "Show"/"Hide".
+10. `practice_attempt_score_renders_as_badge_in_header`
+    - Seed a completed attempt. Assert `practice-attempt-score-badge-{timestamp}` test ID exists in the attempt header row.
+11. `practice_attempt_score_large_text_is_absent`
+    - Assert no element with `fontSize: 28` score text exists in the attempt list.
+12. `practice_evaluation_panel_uses_max_height_not_percentage`
+    - Assert evaluation tab panel style has `maxHeight` set to a numeric value (not a string like `'40%'`).
+
+---
+
+### Phase 8D — Insights + Profile Polish
+
+#### Goals
+- Give the Insights empty state a clear headline, guidance copy, and a navigable CTA.
+- Improve metric card typography and labelling.
+- Add icon-prefixed visual sentiment to the Focus Area card.
+- Remove the redundant "App State" card from Profile.
+- Add visual separation to the Danger Zone card.
+- Collapse the Prompt Preview card.
+- Fix model variant chip overflow on small screens.
+
+#### Deliverables
+**Insights:**
+- **Empty state redesign:** Replace the plain text empty state with:
+  - Headline: `"No insights yet"` in `headingFamily`.
+  - Guidance: `"Submit and evaluate at least one practice attempt to see trends here."` in `bodyText`.
+  - A ghost `AppButton` labelled `"Go to Practice"` that navigates to the Practice tab via `useRouter()` / tab link.
+  - Remove the raw `Sessions tracked: N` / `Attempts tracked: N` meta lines from the empty state card.
+- **Metric typography:** Change `metric` style from `monoFamily` to `headingFamily` at `fontSize: 40` to match the design system pattern for prominent numbers.
+- **Readiness label:** Add a `metaText` label `"READINESS SCORE"` above the readiness number in the Readiness card.
+- **Focus Area icons:** Add `'exclamationmark.circle': 'error-outline'` to the icon mapping. Prefix strongest-category line with `<IconSymbol name="checkmark.circle.fill" color={AppTheme.colors.success} />` and top-gap line with `<IconSymbol name="exclamationmark.circle" color={AppTheme.colors.warning} />`.
+
+**Profile:**
+- **Remove "App State" card:** Delete the `AppCard title="App State"` block. Move `"Current key status: Configured / Not Configured"` as a `metaText` line inside the existing "API Settings" card, below the button row.
+- **Danger Zone styling:** Add `borderLeftWidth: 3` and `borderLeftColor: AppTheme.colors.warning` to the Danger Zone `AppCard`. Override the card `backgroundColor` with a very faint warm tint (`'rgba(245,158,11,0.05)'`). Add a `dangerCard` override style rather than modifying `AppCard` itself.
+- **Prompt Preview collapse:** Add local `showPromptPreview` state (default `false`). Render a ghost `AppButton` labelled `"Show Prompt Preview"` / `"Hide Prompt Preview"` before the prompt text. Render the text only when `showPromptPreview` is true.
+- **Model variant radio list:** Replace the `flexWrap: 'wrap'` chip row for model variants with a vertical list of full-width pressable rows. Each row shows the variant name on the left and a selection dot (filled circle or `checkmark`) on the right. Evaluation Strictness chips remain as-is (short strings that fit well).
+
+#### Locked Decisions
+- The "App State" `AppCard` is removed entirely; its content is not replaced by another card.
+- Prompt Preview is collapsed by default. The text is not truncated — it is either fully hidden or fully shown.
+- `AppCard` component itself is not modified for the Danger Zone; the tinted styling is applied via a wrapping `View` style override at the call site in `profile.tsx`.
+
+#### Visible UI Test
+- Open Insights with no evaluated attempts. Confirm "No insights yet" headline, guidance copy, and "Go to Practice" button are visible. Tap "Go to Practice" and confirm navigation to the Practice tab.
+- Open Insights with evaluated data. Confirm metric numbers use heading font at larger size. Confirm "READINESS SCORE" label above the readiness number. Confirm checkmark (green) and warning (amber) icons prefix the Focus Area lines.
+- Open Profile. Confirm "App State" card is gone. Confirm key status appears as a single meta line inside the API Settings card.
+- Scroll to the Danger Zone card. Confirm it has a distinct left warning border distinguishing it from other cards.
+- Confirm "Prompt Preview" section is collapsed by default. Tap "Show Prompt Preview" and confirm text appears. Tap again and confirm it hides.
+- Confirm model variant options render as a vertical list, each on its own full-width row, with a clear selection indicator.
+
+#### Automated Tests
+- `insights_empty_state_shows_headline_and_cta`
+- `insights_empty_state_cta_navigates_to_practice`
+- `insights_readiness_metric_shows_readiness_label`
+- `insights_focus_area_has_icon_for_strongest_category`
+- `insights_focus_area_has_icon_for_top_gap`
+- `profile_app_state_card_is_removed`
+- `profile_key_status_renders_inside_api_settings_card`
+- `profile_danger_zone_has_warning_left_border`
+- `profile_prompt_preview_collapsed_by_default`
+- `profile_prompt_preview_expands_on_show_press`
+- `profile_model_variant_renders_as_radio_list`
+
+#### Automated Test Cases (Detailed)
+1. `insights_empty_state_shows_headline_and_cta`
+   - Render Insights with no sessions. Assert `"No insights yet"` heading and `"Go to Practice"` button are visible.
+2. `insights_empty_state_cta_navigates_to_practice`
+   - Press `"Go to Practice"`. Assert router navigation was called with the Practice tab href.
+3. `insights_readiness_metric_shows_readiness_label`
+   - Render Insights with evaluated data. Assert `"READINESS SCORE"` label exists in the Readiness card.
+4. `insights_focus_area_has_icon_for_strongest_category`
+   - Render Focus Area with a strongest category value. Assert `checkmark.circle.fill` icon is rendered in that row.
+5. `insights_focus_area_has_icon_for_top_gap`
+   - Render Focus Area with a top-gap value. Assert `exclamationmark.circle` icon is rendered in that row.
+6. `profile_app_state_card_is_removed`
+   - Render Profile. Assert no element with text `"App State"` exists as a card title.
+7. `profile_key_status_renders_inside_api_settings_card`
+   - Render Profile with a configured API key. Assert `"Current key status: Configured"` meta text appears and is inside (a descendant of) the API Settings card region.
+8. `profile_danger_zone_has_warning_left_border`
+   - Assert the Danger Zone card container has `borderLeftColor` matching `AppTheme.colors.warning`.
+9. `profile_prompt_preview_collapsed_by_default`
+   - Render Profile. Assert the prompt preview text is not visible. Assert `"Show Prompt Preview"` button is visible.
+10. `profile_prompt_preview_expands_on_show_press`
+    - Press `"Show Prompt Preview"`. Assert the resolved prompt text is now visible.
+11. `profile_model_variant_renders_as_radio_list`
+    - Render Profile. Assert each `MODEL_VARIANTS` entry is its own full-width pressable row (test ID `profile-model-variant-row-{variant}`), not a chip inside a `flexWrap` row.
+
+---
+
+### Phase 8E — Navigation & Information Architecture
+
+#### Goals
+- Replace the misleading `house.fill` tab icon on Prepare with one that communicates session creation.
+- Consolidate the double empty-state on Practice when no sessions exist into a single, actionable card.
+
+#### Deliverables
+- **Prepare tab icon:** Change `house.fill` to `square.and.pencil` in the tab navigator. Add `'square.and.pencil': 'edit-note'` to the icon mapping.
+- **Practice no-session empty state:** When `sessions.length === 0`, replace the "Session + Question Selection" and "Selected Question Details" cards with a single `AppCard` containing:
+  - Headline: `"No sessions yet"`.
+  - Guidance: `"Generate a session in Prepare to start practising."`.
+  - Ghost `AppButton` labelled `"Go to Prepare"` that navigates to the Prepare tab.
+  - The "Past Answers" card is still rendered (or also replaced by the same single card) — one empty state, not two.
+
+#### Locked Decisions
+- All other tab icons (`mic.fill`, `chart.bar.fill`, `person.fill`) are unchanged.
+- When sessions exist but none is selected, existing behaviour is preserved. The single empty state only fires when `sessions.length === 0`.
+
+#### Visible UI Test
+- Open the app after clearing all data. Confirm the Prepare tab now shows the pencil/edit icon in the tab bar.
+- Open Practice with no sessions. Confirm a single card with "No sessions yet" headline and "Go to Prepare" button is shown, and no selection dropdowns or empty question details card are rendered.
+- Tap "Go to Prepare" from the Practice empty state and confirm navigation to the Prepare tab.
+
+#### Automated Tests
+- `navigation_prepare_tab_uses_pencil_icon`
+- `practice_no_sessions_shows_single_empty_state`
+- `practice_no_sessions_empty_state_hides_selection_cards`
+- `practice_no_sessions_cta_navigates_to_prepare`
+
+#### Automated Test Cases (Detailed)
+1. `navigation_prepare_tab_uses_pencil_icon`
+   - Render the tab layout. Assert the Prepare tab icon is `square.and.pencil`, not `house.fill`.
+2. `practice_no_sessions_shows_single_empty_state`
+   - Render Practice with an empty session list. Assert `"No sessions yet"` text and `"Go to Prepare"` button are visible.
+3. `practice_no_sessions_empty_state_hides_selection_cards`
+   - Render Practice with an empty session list. Assert `practice-session-dropdown-trigger` and `practice-question-dropdown-trigger` do not exist in the tree.
+4. `practice_no_sessions_cta_navigates_to_prepare`
+   - Press `"Go to Prepare"`. Assert router navigation was called with the Prepare tab href.
+
+---
+
+### Phase 8 — Shared Constraints
+- All changes must be backward-compatible with existing test IDs. New test IDs may be added; no existing test IDs may be removed unless explicitly listed in the relevant sub-phase's locked decisions.
+- No new runtime dependencies. All new components use the existing React Native primitives and `AppTheme` tokens.
+- The toast system must not break the inline `expect(screen.getByText('...'))` test assertions in existing tests. During migration, screens keep their inline text for test-facing assertions and route them through the toast hook; existing assertions remain valid via the toast text being in the rendered tree.
+- Each sub-phase ends with a full `jest --runInBand` pass before the next sub-phase begins.
+
+---
+
 ## Exit Criteria
-- Phase 5, 6, and 7 deliverables completed.
+- Phase 5, 6, 7, and 8 deliverables completed.
 - All automated tests pass.
 - Manual UI verification completed for each phase.
 - Constraints enforced:
