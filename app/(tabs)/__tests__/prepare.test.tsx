@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import * as ImagePicker from 'expo-image-picker';
 import type { ReactNode } from 'react';
 
 import { Session } from '@/lib/domain/session-models';
@@ -75,6 +76,7 @@ const mockGenerateInterviewQuestions = generateInterviewQuestions as jest.Mocked
 const mockCreateSessionFromQuestionList = createSessionFromQuestionList as jest.MockedFunction<typeof createSessionFromQuestionList>;
 const mockSaveSession = saveSession as jest.MockedFunction<typeof saveSession>;
 const mockGetAppSettings = getAppSettings as jest.MockedFunction<typeof getAppSettings>;
+const mockLaunchImageLibraryAsync = ImagePicker.launchImageLibraryAsync as jest.MockedFunction<typeof ImagePicker.launchImageLibraryAsync>;
 
 function buildSession(overrides: Partial<Session>): Session {
   return {
@@ -201,6 +203,37 @@ describe('prepare session details modal', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText('Delete Backend Interview Prep')).toBeTruthy();
+    });
+  });
+
+  it('shows compact image previews and allows removing an uploaded image', async () => {
+    mockLaunchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file:///tmp/uploaded-preview.png',
+          fileSize: 524288,
+          width: 600,
+          height: 600,
+        } as ImagePicker.ImagePickerAsset,
+      ],
+    });
+
+    const screen = render(<PrepareScreen />);
+
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('prepare-image-preview-strip')).toBeTruthy();
+      expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
+      expect(screen.queryByText('file:///tmp/uploaded-preview.png')).toBeNull();
+    });
+
+    fireEvent.press(screen.getByTestId('prepare-remove-image-0'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('prepare-image-preview-0')).toBeNull();
     });
   });
 

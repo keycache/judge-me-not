@@ -31,6 +31,13 @@ export default function PrepareScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { width: windowWidth } = useWindowDimensions();
   const carouselPageWidth = Math.max(220, windowWidth - AppTheme.spacing.md * 4);
+  const imagePreviewGap = AppTheme.spacing.xs;
+  const imagePreviewSize = Math.max(
+    44,
+    Math.floor(
+      (windowWidth - AppTheme.spacing.lg * 2 - AppTheme.spacing.md * 2 - imagePreviewGap * (MAX_IMAGES - 1)) / MAX_IMAGES
+    )
+  );
   const contentBottomPadding = tabBarHeight;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mode, setMode] = useState<InputMode>('text');
@@ -155,6 +162,11 @@ export default function PrepareScreen() {
 
     addPickedAsset(result.assets[0]);
   }, [addPickedAsset]);
+
+  const onRemoveImage = useCallback((imageUri: string) => {
+    setImages((current) => current.filter((image) => image.uri !== imageUri));
+    setValidationErrors([]);
+  }, []);
 
   const onGenerate = useCallback(async () => {
     if (isGeneratingSession) {
@@ -340,14 +352,26 @@ export default function PrepareScreen() {
               </View>
             </View>
             <Text style={styles.hintText}>Max {MAX_IMAGES} images, each up to {Math.round(MAX_IMAGE_SIZE_BYTES / (1024 * 1024))}MB.</Text>
-            {images.map((image, index) => (
-              <View testID={`prepare-image-row-${index.toString()}`} key={image.uri + image.fileSizeBytes.toString()} style={styles.imageRow}>
-                <Text style={styles.sessionTitle}>{image.uri}</Text>
-                <Text style={styles.sessionMeta}>
-                  {image.fileSizeBytes > 0 ? `${(image.fileSizeBytes / (1024 * 1024)).toFixed(2)}MB` : 'Size unavailable'}
-                </Text>
+            {images.length > 0 ? (
+              <View style={styles.imagePreviewStrip} testID="prepare-image-preview-strip">
+                {images.map((image, index) => (
+                  <View
+                    testID={`prepare-image-preview-${index.toString()}`}
+                    key={image.uri + image.fileSizeBytes.toString()}
+                    style={[styles.imagePreviewCard, { width: imagePreviewSize }]}>
+                    <Image source={{ uri: image.uri }} style={[styles.imagePreview, { width: imagePreviewSize, height: imagePreviewSize }]} resizeMode="cover" />
+                    <Pressable
+                      accessibilityLabel={`Remove selected image ${index + 1}`}
+                      hitSlop={8}
+                      onPress={() => onRemoveImage(image.uri)}
+                      style={styles.imagePreviewRemoveButton}
+                      testID={`prepare-remove-image-${index.toString()}`}>
+                      <Text style={styles.imagePreviewRemoveText}>x</Text>
+                    </Pressable>
+                  </View>
+                ))}
               </View>
-            ))}
+            ) : null}
           </View>
         )}
       </AppCard>
@@ -571,13 +595,40 @@ const styles = StyleSheet.create({
   flexButton: {
     flex: 1,
   },
-  imageRow: {
-    borderColor: AppTheme.colors.borderSubtle,
-    borderWidth: 1,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-    paddingHorizontal: AppTheme.spacing.md,
-    paddingVertical: AppTheme.spacing.sm,
+  imagePreviewStrip: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
     gap: AppTheme.spacing.xs,
+    alignItems: 'flex-start',
+  },
+  imagePreviewCard: {
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    backgroundColor: AppTheme.colors.surfaceTertiary,
+  },
+  imagePreviewRemoveButton: {
+    position: 'absolute',
+    top: AppTheme.spacing.xxs,
+    right: AppTheme.spacing.xxs,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(13, 17, 23, 0.88)',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+  },
+  imagePreviewRemoveText: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 12,
+    lineHeight: 12,
+    textTransform: 'uppercase',
   },
   hintText: {
     color: AppTheme.colors.textMuted,

@@ -22,7 +22,7 @@ export function AppScreen({
   const insets = useSafeAreaInsets();
   const safeAreaEdges = excludeBottomSafeArea ? (['top', 'left', 'right'] as const) : undefined;
   const viewportBottomInset = excludeBottomSafeArea ? Math.max(0, contentBottomPadding ?? 0) : 0;
-  const contentTailPadding = styles.contentContainer.paddingBottom + (excludeBottomSafeArea ? insets.bottom : 0);
+  const contentTailPadding = styles.contentContainer.paddingBottom + (excludeBottomSafeArea ? insets.bottom + viewportBottomInset : 0);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={safeAreaEdges}>
@@ -31,7 +31,7 @@ export function AppScreen({
           styles.contentContainer,
           { paddingBottom: contentTailPadding },
         ]}
-        style={[styles.scrollView, viewportBottomInset > 0 ? { marginBottom: viewportBottomInset } : null]}>
+        style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
