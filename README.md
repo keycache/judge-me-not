@@ -1,53 +1,31 @@
-# Welcome to your Expo app 👋
+# Judge Me Now
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Judge Me Now is an Expo/React Native interview practice app. It generates mock interview sessions from text descriptions or image inputs, lets users practice answers question by question, and stores sessions, attempts, and settings locally on device.
 
-## Get started
+## Overview
 
-1. Install dependencies
+The app is organized around four main flows:
 
-   ```bash
-   npm install
-   ```
+- Prepare: create question sets from role descriptions or uploaded images using Google GenAI.
+- Practice: select a session, work through generated questions, and track past answers.
+- Insights: review feedback and trends from completed practice attempts.
+- Profile: manage API setup and prompt/settings that influence generation and evaluation.
 
-2. Start the app
+## Stack
 
-   ```bash
-   npx expo start
-   ```
+- Expo Router with tab-based navigation
+- React Native and TypeScript
+- AsyncStorage-backed repositories for sessions and settings
+- Google GenAI integration for question generation and answer evaluation
+- Jest and React Native Testing Library for regression coverage
 
-In the output, you'll find options to open the app in a
+## Project Structure
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `app/`: route-based screens for setup, Prepare, Practice, Insights, and Profile
+- `lib/`: domain models, repositories, prompt composition, GenAI integration, and practice logic
+- `components/` and `constants/`: shared UI primitives, icons, and theme tokens
+- `design/`: reference screens and design artifacts
+- `__tests__`: focused tests across hooks, repositories, domain logic, and tab flows
 
 
 ## Commands
@@ -59,7 +37,7 @@ Do this exact recovery sequence in a terminal:
 Reset ADB and start your emulator explicitly
 adb kill-server
 adb start-server
-/Users/akashpatki/Library/Android/sdk/emulator/emulator -avd Medium_Phone_API_36.1
+emulator -avd Medium_Phone_API_36.1
 
 Wait until Android is fully booted, then verify connection
 adb devices -l
@@ -68,15 +46,7 @@ You should see a line like:
 emulator-5554 device ...
 
 Start Expo clean and launch app to emulator
-cd /Users/akashpatki/Documents/kash/code/moon/react-native/judge-me-not
+cd .../judge-me-not
 npx expo start --clear
 Then press a in the Expo terminal (instead of r first).
 ```
-
-### TODO
-* Image choose, change the file name displayed to image preview
-* change image preview in the modal after session is selected. The image in carousal should be maintained in aspect ratio and padded to diplay as a square
-* disable duplicate images being uploaded
-* Generation Queue, remove the animation
-* Clear the file name(s) and/or text description  adter session generation is complete
-* Make API key display as a password
