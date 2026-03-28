@@ -161,8 +161,8 @@ describe('empty states after clear all', () => {
 
     await waitFor(() => {
       expect(screen.getByText('No sessions available.')).toBeTruthy();
-      expect(screen.getByText('No session/questions available. Generate one from Prepare first.')).toBeTruthy();
-      expect(screen.getByText('Pending Evaluations: 0')).toBeTruthy();
+      expect(screen.getByText('Select a question to view full details.')).toBeTruthy();
+      expect(screen.getByText('Select a question to review previous attempts.')).toBeTruthy();
     });
   });
 
