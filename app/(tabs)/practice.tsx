@@ -1106,10 +1106,6 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textPrimary,
   },
   questionCard: {
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderStrong,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-    padding: AppTheme.spacing.md,
     gap: AppTheme.spacing.xs,
   },
   collapsibleHeader: {
