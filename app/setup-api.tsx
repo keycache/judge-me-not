@@ -49,6 +49,7 @@ export default function SetupApiScreen() {
             }
           }}
           placeholder="sk-..."
+          secureTextEntry
           value={draftKey}
         />
         <AppButton label="Save And Continue" onPress={onContinue} />

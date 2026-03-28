@@ -152,6 +152,7 @@ export default function ProfileScreen() {
           editable={!isLoading}
           onChangeText={setDraftKey}
           placeholder="sk-..."
+          secureTextEntry
           value={draftKey}
         />
         <View style={styles.buttonRow}>
