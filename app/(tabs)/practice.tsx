@@ -894,24 +894,11 @@ export default function PracticeScreen() {
                   return (
                     <View key={attempt.timestamp} style={styles.attemptRow} testID={`practice-attempt-row-${attempt.timestamp}`}>
                       <View style={styles.attemptHeaderRow}>
-                        <View style={styles.attemptHeaderPrimary}>
-                          <Text style={styles.attemptTitle} testID={`practice-attempt-title-${attempt.timestamp}`}>{`Attempt #${attemptNumber}`}</Text>
-                          <View style={styles.attemptStatusBadge} testID={`practice-attempt-status-${attempt.timestamp}`}>
-                            <IconSymbol name={getAttemptStatusIconName(attemptStatus)} size={16} color={getAttemptStatusColor(attemptStatus)} />
-                            <Text style={styles.metaText}>{attemptStatus}</Text>
-                          </View>
+                        <Text style={styles.attemptTitle} testID={`practice-attempt-title-${attempt.timestamp}`}>{`Attempt #${attemptNumber}`}</Text>
+                        <View style={styles.attemptStatusBadge} testID={`practice-attempt-status-${attempt.timestamp}`}>
+                          <IconSymbol name={getAttemptStatusIconName(attemptStatus)} size={16} color={getAttemptStatusColor(attemptStatus)} />
+                          <Text style={styles.metaText}>{attemptStatus}</Text>
                         </View>
-                        <Pressable
-                          accessibilityLabel={activePlaybackAttemptTimestamp === attempt.timestamp && isPlaybackActive ? 'Pause attempt playback' : 'Play attempt playback'}
-                          onPress={() => onToggleAttemptPlayback(attempt.timestamp, attempt.audio_file_path)}
-                          style={styles.attemptPlaybackButton}
-                          testID={`practice-attempt-playback-${attempt.timestamp}`}>
-                          <IconSymbol
-                            name={getAttemptPlaybackIconName(isActivePlaybackAttempt && isPlaybackActive)}
-                            size={20}
-                            color={AppTheme.colors.textPrimary}
-                          />
-                        </Pressable>
                       </View>
                       <Text style={styles.metaText}>{formatAttemptTimestamp(attempt.timestamp)}</Text>
                       {attempt.evaluation ? <Text style={styles.scoreText} testID={`practice-attempt-score-${attempt.timestamp}`}>{`${attempt.evaluation.score}/10`}</Text> : null}
@@ -970,16 +957,30 @@ export default function PracticeScreen() {
                         <View
                           style={[styles.playbackPanel, !isActivePlaybackAttempt ? styles.playbackPanelInactive : null]}
                           testID={`practice-attempt-playback-panel-${attempt.timestamp}`}>
-                          <Slider
-                            disabled={!isActivePlaybackAttempt}
-                            minimumValue={0}
-                            maximumValue={Math.max(attemptPlaybackDuration, 1)}
-                            value={Math.min(attemptPlaybackPosition, Math.max(attemptPlaybackDuration, 1))}
-                            onSlidingComplete={onSeekPlayback}
-                            minimumTrackTintColor={AppTheme.colors.accent}
-                            maximumTrackTintColor={AppTheme.colors.borderStrong}
-                            thumbTintColor={AppTheme.colors.accent}
-                          />
+                          <View style={styles.playbackControlRow}>
+                            <Pressable
+                              accessibilityLabel={activePlaybackAttemptTimestamp === attempt.timestamp && isPlaybackActive ? 'Pause attempt playback' : 'Play attempt playback'}
+                              onPress={() => onToggleAttemptPlayback(attempt.timestamp, attempt.audio_file_path)}
+                              style={styles.attemptPlaybackButton}
+                              testID={`practice-attempt-playback-${attempt.timestamp}`}>
+                              <IconSymbol
+                                name={getAttemptPlaybackIconName(isActivePlaybackAttempt && isPlaybackActive)}
+                                size={20}
+                                color={AppTheme.colors.textPrimary}
+                              />
+                            </Pressable>
+                            <Slider
+                              style={styles.playbackSlider}
+                              disabled={!isActivePlaybackAttempt}
+                              minimumValue={0}
+                              maximumValue={Math.max(attemptPlaybackDuration, 1)}
+                              value={Math.min(attemptPlaybackPosition, Math.max(attemptPlaybackDuration, 1))}
+                              onSlidingComplete={onSeekPlayback}
+                              minimumTrackTintColor={AppTheme.colors.accent}
+                              maximumTrackTintColor={AppTheme.colors.borderStrong}
+                              thumbTintColor={AppTheme.colors.accent}
+                            />
+                          </View>
                           <View style={styles.playbackTimesRow}>
                             <Text style={styles.metaText}>{formatMillis(attemptPlaybackPosition)}</Text>
                             <Text style={styles.metaText}>{formatMillis(attemptPlaybackDuration)}</Text>
@@ -1167,13 +1168,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: AppTheme.spacing.xs,
   },
-  attemptHeaderPrimary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: AppTheme.spacing.xs,
-    flex: 1,
-    minWidth: 0,
-  },
   attemptStatusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1246,6 +1240,14 @@ const styles = StyleSheet.create({
   },
   playbackPanel: {
     gap: AppTheme.spacing.xs,
+  },
+  playbackControlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AppTheme.spacing.xs,
+  },
+  playbackSlider: {
+    flex: 1,
   },
   playbackPanelInactive: {
     opacity: 0.72,
