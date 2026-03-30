@@ -1,7 +1,9 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { AppScreen } from '@/components/ui/app-screen';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -21,6 +23,7 @@ function toOneLinePreview(input: string, maxLength = 60): string {
 }
 
 export default function InsightsScreen() {
+  const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const contentBottomPadding = tabBarHeight;
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -94,11 +97,16 @@ export default function InsightsScreen() {
 
       {!isLoading && !hasEvaluations ? (
         <AppCard title="No Insights Yet">
+          <Text style={styles.emptyHeadline} testID="insights-empty-headline">No insights yet</Text>
           <Text style={styles.bodyText} testID="insights-empty-state">
-            Complete and evaluate at least one practice attempt to unlock readiness and coaching trends.
+            Submit and evaluate at least one practice attempt to see trends here.
           </Text>
-          <Text style={styles.metaText}>Sessions tracked: {summary?.totalSessions ?? 0}</Text>
-          <Text style={styles.metaText}>Attempts tracked: {summary?.totalAttempts ?? 0}</Text>
+          <AppButton
+            label="Go to Practice"
+            testID="insights-empty-cta"
+            onPress={() => router.push('/(tabs)/practice')}
+            variant="ghost"
+          />
         </AppCard>
       ) : null}
 
@@ -107,6 +115,7 @@ export default function InsightsScreen() {
           <View style={styles.metricRow}>
             <View style={styles.metricColumn}>
               <AppCard title="Readiness">
+                <Text style={styles.metaText} testID="insights-readiness-label">READINESS SCORE</Text>
                 <Text style={styles.metric} testID="insights-readiness-metric">{summary?.readinessPercent}%</Text>
                 <Text style={styles.metaText} testID="insights-average-score">Average score {summary?.averageScore}/10</Text>
               </AppCard>
@@ -120,8 +129,14 @@ export default function InsightsScreen() {
           </View>
 
           <AppCard title="Focus Area">
-            <Text style={styles.bodyText}>Strongest category: {summary?.strongestCategory ?? 'N/A'}</Text>
-            <Text style={styles.bodyText}>Most frequent gap: {summary?.topGap ?? 'N/A'}</Text>
+            <View style={styles.focusAreaRow}>
+              <IconSymbol name="checkmark.circle.fill" size={16} color={AppTheme.colors.success} />
+              <Text style={styles.bodyText} testID="insights-focus-strongest">Strongest category: {summary?.strongestCategory ?? 'N/A'}</Text>
+            </View>
+            <View style={styles.focusAreaRow}>
+              <IconSymbol name="exclamationmark.circle" size={16} color={AppTheme.colors.warning} />
+              <Text style={styles.bodyText} testID="insights-focus-gap">Most frequent gap: {summary?.topGap ?? 'N/A'}</Text>
+            </View>
           </AppCard>
         </>
       ) : null}
@@ -156,8 +171,19 @@ const styles = StyleSheet.create({
   },
   metric: {
     color: AppTheme.colors.textPrimary,
-    fontFamily: AppTheme.typography.monoFamily,
-    fontSize: 24,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 40,
+  },
+  emptyHeadline: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 20,
+    textTransform: 'uppercase',
+  },
+  focusAreaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AppTheme.spacing.xs,
   },
   bodyText: {
     color: AppTheme.colors.textSecondary,

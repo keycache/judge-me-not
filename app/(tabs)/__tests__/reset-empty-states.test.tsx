@@ -19,6 +19,10 @@ jest.mock('@react-navigation/bottom-tabs', () => ({
   useBottomTabBarHeight: jest.fn(() => 0),
 }));
 
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(() => ({ push: jest.fn() })),
+}));
+
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
 }));
@@ -171,8 +175,8 @@ describe('empty states after clear all', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('insights-empty-state')).toBeTruthy();
-      expect(screen.getByText('Sessions tracked: 0')).toBeTruthy();
-      expect(screen.getByText('Attempts tracked: 0')).toBeTruthy();
+      expect(screen.getByTestId('insights-empty-headline')).toBeTruthy();
+      expect(screen.getByTestId('insights-empty-cta')).toBeTruthy();
     });
   });
 });

@@ -27,6 +27,10 @@ jest.mock('@react-navigation/bottom-tabs', () => ({
   useBottomTabBarHeight: jest.fn(() => 0),
 }));
 
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(() => ({ push: jest.fn() })),
+}));
+
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
 }));

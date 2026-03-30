@@ -4,6 +4,28 @@ import type { ReactNode } from 'react';
 import { listSessions } from '@/lib/repositories/session-repository';
 import InsightsScreen from '../insights';
 
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock('@/components/ui/app-button', () => ({
+  AppButton: ({ label, onPress, testID }: { label: string; onPress: () => void; testID?: string }) => {
+    const rn = jest.requireActual('react-native');
+    return (
+      <rn.TouchableOpacity onPress={onPress} testID={testID}>
+        <rn.Text>{label}</rn.Text>
+      </rn.TouchableOpacity>
+    );
+  },
+}));
+
+jest.mock('@/components/ui/icon-symbol', () => ({
+  IconSymbol: ({ name }: { name: string }) => {
+    const rn = jest.requireActual('react-native');
+    return <rn.Text>{name}</rn.Text>;
+  },
+}));
+
 jest.mock('@react-navigation/bottom-tabs', () => ({
   useBottomTabBarHeight: jest.fn(() => 0),
 }));
@@ -36,6 +58,8 @@ const mockListSessions = listSessions as jest.MockedFunction<typeof listSessions
 describe('insights screen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const { useRouter } = jest.requireMock('expo-router') as { useRouter: jest.Mock };
+    useRouter.mockReturnValue({ push: jest.fn() });
   });
 
   it('shows an empty state when no evaluated attempts exist', async () => {
@@ -45,7 +69,7 @@ describe('insights screen', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('insights-empty-state')).toBeTruthy();
-      expect(screen.getByText(/unlock readiness and coaching trends/i)).toBeTruthy();
+      expect(screen.getByText(/see trends here/i)).toBeTruthy();
     });
   });
 
@@ -178,6 +202,118 @@ describe('insights screen', () => {
       expect(screen.getByText('Strongest category: System Design')).toBeTruthy();
       expect(screen.getByText('Most frequent gap: Clarify trade-offs')).toBeTruthy();
       expect(screen.getByText('Filtered to Architecture Review Loop')).toBeTruthy();
+    });
+  });
+});
+
+const SESSION_WITH_EVAL = {
+  id: 'session-1',
+  title: 'Incident Response Loop',
+  createdAtIso: '2026-03-27T10:00:00.000Z',
+  updatedAtIso: '2026-03-27T10:00:00.000Z',
+  audioIndex: [],
+  promptSnapshot: null,
+  questionList: {
+    questions: [
+      {
+        value: 'Tell me about a production incident.',
+        category: 'Incident Management',
+        difficulty: 'Medium' as const,
+        answer: 'Explain incident handling.',
+        answers: [
+          {
+            audio_file_path: 'file:///a1.m4a',
+            timestamp: '2026-03-27T10:10:00.000Z',
+            evaluation: {
+              score: 8,
+              candidate_answer: 'I led mitigation.',
+              feedback: 'Good structure.',
+              gaps_identified: ['Add clearer metrics'],
+              model_answer: 'Stronger answer.',
+            },
+          },
+        ],
+      },
+    ],
+  },
+};
+
+describe('insights screen phase 8d — empty state + metrics polish', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const { useRouter } = jest.requireMock('expo-router') as { useRouter: jest.Mock };
+    useRouter.mockReturnValue({ push: jest.fn() });
+  });
+
+  it('empty state shows headline and go-to-practice CTA', async () => {
+    mockListSessions.mockResolvedValue([]);
+    const screen = render(<InsightsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insights-empty-headline')).toBeTruthy();
+      expect(screen.getByText('No insights yet')).toBeTruthy();
+      expect(screen.getByTestId('insights-empty-cta')).toBeTruthy();
+      expect(screen.getByText('Go to Practice')).toBeTruthy();
+    });
+  });
+
+  it('empty state CTA navigates to Practice tab', async () => {
+    mockListSessions.mockResolvedValue([]);
+    const mockPush = jest.fn();
+    const { useRouter } = jest.requireMock('expo-router') as { useRouter: jest.Mock };
+    useRouter.mockReturnValue({ push: mockPush });
+
+    const screen = render(<InsightsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insights-empty-cta')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('insights-empty-cta'));
+
+    expect(mockPush).toHaveBeenCalledWith('/(tabs)/practice');
+  });
+
+  it('empty state no longer shows sessions/attempts tracked meta lines', async () => {
+    mockListSessions.mockResolvedValue([]);
+    const screen = render(<InsightsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insights-empty-state')).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/Sessions tracked:/)).toBeNull();
+    expect(screen.queryByText(/Attempts tracked:/)).toBeNull();
+  });
+
+  it('readiness card shows READINESS SCORE label above the metric', async () => {
+    mockListSessions.mockResolvedValue([SESSION_WITH_EVAL]);
+    const screen = render(<InsightsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insights-readiness-label')).toBeTruthy();
+      expect(screen.getByText('READINESS SCORE')).toBeTruthy();
+      expect(screen.getByTestId('insights-readiness-metric')).toBeTruthy();
+    });
+  });
+
+  it('focus area shows checkmark icon for strongest category', async () => {
+    mockListSessions.mockResolvedValue([SESSION_WITH_EVAL]);
+    const screen = render(<InsightsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insights-focus-strongest')).toBeTruthy();
+      expect(screen.getByText('checkmark.circle.fill')).toBeTruthy();
+    });
+  });
+
+  it('focus area shows warning icon for top gap', async () => {
+    mockListSessions.mockResolvedValue([SESSION_WITH_EVAL]);
+    const screen = render(<InsightsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insights-focus-gap')).toBeTruthy();
+      expect(screen.getByText('exclamationmark.circle')).toBeTruthy();
     });
   });
 });

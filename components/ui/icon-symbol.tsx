@@ -31,6 +31,7 @@ const MAPPING = {
   'chevron.down': 'expand-more',
   'xmark': 'close',
   'shuffle': 'shuffle',
+  'exclamationmark.circle': 'error-outline',
 } as IconMapping;
 
 /**

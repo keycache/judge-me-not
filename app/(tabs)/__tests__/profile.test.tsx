@@ -181,3 +181,105 @@ describe('profile screen', () => {
     expect(screen.queryByText('All local app data cleared. Returning to setup.')).toBeNull();
   });
 });
+
+describe('profile screen phase 8d — structural polish', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+
+    mockUseApiKey.mockReturnValue({
+      apiKey: 'sk-existing',
+      isLoading: false,
+      loadApiKey: jest.fn(async () => null),
+      persistApiKey: jest.fn(async (value: string) => value),
+      removeApiKey: jest.fn(async () => undefined),
+    });
+
+    mockGetAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Direct and constructive interview coach',
+      },
+    });
+
+    mockPatchAppSettings.mockImplementation(async (patch) => ({
+      activeSessionId: patch.activeSessionId ?? null,
+      recordingLimitSeconds: patch.recordingLimitSeconds ?? 120,
+      promptSettings: {
+        modelVariant: patch.promptSettings?.modelVariant ?? 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: patch.promptSettings?.evaluationStrictness ?? 'balanced',
+        systemPersona: patch.promptSettings?.systemPersona ?? 'Direct and constructive interview coach',
+      },
+    }));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('App State card is removed', async () => {
+    const screen = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('API Settings')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('App State')).toBeNull();
+  });
+
+  it('key status renders inside API Settings card', async () => {
+    const screen = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-key-status')).toBeTruthy();
+      expect(screen.getByText('Current key status: Configured')).toBeTruthy();
+    });
+  });
+
+  it('danger zone wrapper has warning left border', async () => {
+    const screen = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      const wrapper = screen.getByTestId('profile-danger-zone-wrapper');
+      expect(wrapper).toBeTruthy();
+      expect(wrapper).toHaveStyle({ borderLeftColor: '#F59E0B' });
+    });
+  });
+
+  it('prompt preview is collapsed by default', async () => {
+    const screen = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-prompt-preview-toggle')).toBeTruthy();
+      expect(screen.getByText('Show Prompt Preview')).toBeTruthy();
+      expect(screen.queryByTestId('profile-prompt-preview-text')).toBeNull();
+    });
+  });
+
+  it('prompt preview expands on show press', async () => {
+    const screen = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-prompt-preview-toggle')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('profile-prompt-preview-toggle'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-prompt-preview-text')).toBeTruthy();
+      expect(screen.getByText('Hide Prompt Preview')).toBeTruthy();
+    });
+  });
+
+  it('model variant renders as radio list with per-variant row test IDs', async () => {
+    const screen = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-model-variant-row-gemini-2.5-flash-lite-preview')).toBeTruthy();
+      expect(screen.getByTestId('profile-model-variant-row-gemini-3.1-flash-lite-preview')).toBeTruthy();
+    });
+  });
+});

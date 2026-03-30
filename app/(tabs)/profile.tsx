@@ -33,6 +33,7 @@ export default function ProfileScreen() {
     DEFAULT_APP_SETTINGS.recordingLimitSeconds.toString()
   );
   const [isResetting, setIsResetting] = useState(false);
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
 
   useEffect(() => {
     setDraftKey(apiKey ?? '');
@@ -157,12 +158,10 @@ export default function ProfileScreen() {
           <AppButton label="Save Key" onPress={onSave} />
           <AppButton label="Clear" onPress={onClear} variant="ghost" />
         </View>
+        <Text style={styles.metaText} testID="profile-key-status">Current key status: {apiKey ? 'Configured' : 'Not Configured'}</Text>
       </AppCard>
 
-      <AppCard title="App State">
-        <Text style={styles.bodyText}>Current key status: {apiKey ? 'Configured' : 'Not Configured'}</Text>
-      </AppCard>
-
+      <View style={styles.dangerZoneWrapper} testID="profile-danger-zone-wrapper">
       <AppCard title="Danger Zone">
         <Text style={styles.bodyText}>
           Clear every local session, attempt, pending evaluation, saved prompt setting, and the Gemini API key.
@@ -175,18 +174,21 @@ export default function ProfileScreen() {
           testID="profile-clear-all-data"
         />
       </AppCard>
+      </View>
 
       <AppCard title="Prompt Settings">
         <Text style={styles.label}>Model Variant</Text>
-        <View style={styles.choiceRow}>
+        <View style={styles.radioList}>
           {MODEL_VARIANTS.map((variant) => {
             const selected = modelVariant === variant;
             return (
               <Pressable
                 key={variant}
+                testID={`profile-model-variant-row-${variant}`}
                 onPress={() => setModelVariant(variant)}
-                style={[styles.choiceChip, selected ? styles.choiceChipSelected : null]}>
-                <Text style={[styles.choiceText, selected ? styles.choiceTextSelected : null]}>{variant}</Text>
+                style={[styles.radioRow, selected ? styles.radioRowSelected : null]}>
+                <Text style={[styles.radioRowText, selected ? styles.radioRowTextSelected : null]}>{variant}</Text>
+                <View style={[styles.radioIndicator, selected ? styles.radioIndicatorSelected : null]} />
               </Pressable>
             );
           })}
@@ -217,7 +219,15 @@ export default function ProfileScreen() {
       </AppCard>
 
       <AppCard title="Prompt Preview">
-        <Text style={styles.previewText}>{promptPreview}</Text>
+        <AppButton
+          label={showPromptPreview ? 'Hide Prompt Preview' : 'Show Prompt Preview'}
+          onPress={() => setShowPromptPreview((v) => !v)}
+          testID="profile-prompt-preview-toggle"
+          variant="ghost"
+        />
+        {showPromptPreview ? (
+          <Text style={styles.previewText} testID="profile-prompt-preview-text">{promptPreview}</Text>
+        ) : null}
       </AppCard>
     </AppScreen>
     <ToastContainer toastState={toastState} />
@@ -275,10 +285,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  statusText: {
-    color: AppTheme.colors.warning,
-    fontFamily: AppTheme.typography.monoFamily,
+  dangerZoneWrapper: {
+    borderLeftWidth: 3,
+    borderLeftColor: AppTheme.colors.warning,
+    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+  },
+  radioList: {
+    gap: AppTheme.spacing.xxs,
+  },
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    paddingHorizontal: AppTheme.spacing.sm,
+    paddingVertical: AppTheme.spacing.xs,
+  },
+  radioRowSelected: {
+    borderColor: AppTheme.colors.accent,
+  },
+  radioRowText: {
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.bodyFamily,
     fontSize: 13,
-    letterSpacing: 0.3,
+  },
+  radioRowTextSelected: {
+    color: AppTheme.colors.textPrimary,
+  },
+  radioIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderStrong,
+  },
+  radioIndicatorSelected: {
+    backgroundColor: AppTheme.colors.accent,
+    borderColor: AppTheme.colors.accent,
   },
 });
