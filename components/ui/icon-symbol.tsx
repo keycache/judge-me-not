@@ -28,6 +28,7 @@ const MAPPING = {
   pencil: 'edit',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.down': 'expand-more',
 } as IconMapping;
 
 /**

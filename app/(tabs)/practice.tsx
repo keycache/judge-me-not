@@ -4,13 +4,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as Network from 'expo-network';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { AppInput } from '@/components/ui/app-input';
 import { AppScreen } from '@/components/ui/app-screen';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SelectorDropdown } from '@/components/ui/selector-dropdown';
+import { ToastContainer, useToast } from '@/components/ui/toast';
 import { AppTheme } from '@/constants/app-theme';
 import { Answer, buildQuestionValueKey } from '@/lib/domain/interview-models';
 import { DEFAULT_APP_SETTINGS, Session } from '@/lib/domain/session-models';
@@ -85,49 +87,6 @@ function formatAttemptTimestamp(input: string): string {
   return date.toLocaleString();
 }
 
-interface DropdownOption {
-  key: string;
-  label: string;
-}
-
-interface SelectorDropdownProps {
-  visible: boolean;
-  title: string;
-  options: DropdownOption[];
-  selectedKey: string | null;
-  onSelect: (key: string) => void;
-  onClose: () => void;
-}
-
-function SelectorDropdown({ visible, title, options, selectedKey, onSelect, onClose }: SelectorDropdownProps) {
-  return (
-    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
-      <Pressable style={styles.dropdownBackdrop} onPress={onClose} testID={`practice-dropdown-backdrop-${title.replace(/\s+/g, '-').toLowerCase()}`}>
-        <View style={styles.dropdownPanel}>
-          <Text style={styles.dropdownTitle} testID={`practice-dropdown-title-${title.replace(/\s+/g, '-').toLowerCase()}`}>{title}</Text>
-          <ScrollView style={styles.dropdownList}>
-            {options.map((option) => {
-              const selected = option.key === selectedKey;
-              return (
-                <Pressable
-                  key={option.key}
-                  testID={`practice-dropdown-option-${option.key}`}
-                  onPress={() => {
-                    onSelect(option.key);
-                    onClose();
-                  }}
-                  style={[styles.dropdownRow, selected ? styles.dropdownRowSelected : null]}>
-                  <Text style={[styles.dropdownText, selected ? styles.dropdownTextSelected : null]}>{option.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Pressable>
-    </Modal>
-  );
-}
-
 export default function PracticeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const contentBottomPadding = tabBarHeight;
@@ -137,7 +96,7 @@ export default function PracticeScreen() {
   const [randomCycleBySession, setRandomCycleBySession] = useState<Record<string, string[]>>({});
   const [attempts, setAttempts] = useState<Answer[]>([]);
   const [transcriptDraft, setTranscriptDraft] = useState('');
-  const [status, setStatus] = useState('');
+  const { showToast, toastState } = useToast();
   const [recordingLimitSeconds, setRecordingLimitSeconds] = useState(DEFAULT_APP_SETTINGS.recordingLimitSeconds);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -317,7 +276,7 @@ export default function PracticeScreen() {
     async function retryPending() {
       const processed = await processPendingEvaluations(isOnline);
       if (processed > 0) {
-        setStatus(`Auto-evaluated ${processed} pending attempt(s) after reconnect.`);
+        showToast(`Auto-evaluated ${processed} pending attempt(s) after reconnect.`, 'success');
         await reloadPracticeState();
         await refreshAttempts();
       }
@@ -378,13 +337,13 @@ export default function PracticeScreen() {
     loopbackWarnedRef.current = false;
 
     if (!uri) {
-      setStatus('Recording failed to produce an audio file.');
+      showToast('Recording failed to produce an audio file.', 'warning');
       return;
     }
 
     if (abortDueToSaturationRef.current || shouldDiscardSaturated) {
       abortDueToSaturationRef.current = false;
-      setStatus('Recording discarded due to saturated mic input (beep/loopback detected).');
+      showToast('Recording discarded due to saturated mic input (beep/loopback detected).', 'warning');
       setRecordingSeconds(0);
       saturatedCountRef.current = 0;
       hadUsableMicInputRef.current = false;
@@ -395,7 +354,7 @@ export default function PracticeScreen() {
     }
 
     if (!enforceRecordingLimit(recordingSeconds, recordingLimitSeconds)) {
-      setStatus(`Recording exceeded limit of ${recordingLimitSeconds} seconds and was discarded.`);
+      showToast(`Recording exceeded limit of ${recordingLimitSeconds} seconds and was discarded.`, 'warning');
       setRecordingSeconds(0);
       return;
     }
@@ -407,7 +366,7 @@ export default function PracticeScreen() {
       audioFilePath: uri,
     });
 
-    setStatus(`Attempt saved locally (${recordingSeconds}s). Submit to evaluate.`);
+    showToast(`Attempt saved locally (${recordingSeconds}s). Submit to evaluate.`, 'success');
     saturatedCountRef.current = 0;
     hadUsableMicInputRef.current = false;
     lastUsableInputMsRef.current = 0;
@@ -430,13 +389,13 @@ export default function PracticeScreen() {
 
   const startRecording = useCallback(async () => {
     if (!activeSession || !activeQuestion) {
-      setStatus('Create a session in Prepare first.');
+      showToast('Create a session in Prepare first.', 'warning');
       return;
     }
 
     const permission = await Audio.requestPermissionsAsync();
     if (!permission.granted) {
-      setStatus('Microphone permission is required to record attempts.');
+      showToast('Microphone permission is required to record attempts.', 'warning');
       return;
     }
 
@@ -487,7 +446,7 @@ export default function PracticeScreen() {
     lastMeterDurationMsRef.current = 0;
     loopbackWarnedRef.current = false;
     setIsRecording(true);
-    setStatus(`Recording... cap ${recordingLimitSeconds}s.`);
+    showToast(`Recording... cap ${recordingLimitSeconds}s.`, 'info');
 
     if (useMetering) {
       recording.setOnRecordingStatusUpdate((nextStatus) => {
@@ -513,7 +472,7 @@ export default function PracticeScreen() {
             !abortDueToSaturationRef.current
           ) {
             abortDueToSaturationRef.current = true;
-            setStatus('Mic input saturated. Stopping and discarding this recording.');
+            showToast('Mic input saturated. Stopping and discarding this recording.', 'warning');
             void stopRecording();
           }
           return;
@@ -573,11 +532,11 @@ export default function PracticeScreen() {
           isOnline,
         });
 
-        setStatus(result === 'pending' ? 'Attempt queued for evaluation (offline).' : 'Attempt evaluated online.');
+        showToast(result === 'pending' ? 'Attempt queued for evaluation (offline).' : 'Attempt evaluated online.', result === 'pending' ? 'info' : 'success');
         await refreshAttempts();
         await refreshPendingCount();
       } catch {
-        setStatus('Attempt could not be submitted. Try again.');
+        showToast('Attempt could not be submitted. Try again.', 'warning');
       } finally {
         setSubmittingAttemptTimestamps((current) => {
           const next = new Set(current);
@@ -592,7 +551,7 @@ export default function PracticeScreen() {
   const onToggleAttemptPlayback = useCallback(
     async (attemptTimestamp: string, uri: string | null) => {
       if (!uri) {
-        setStatus('No local recording for this attempt.');
+        showToast('No local recording for this attempt.', 'warning');
         return;
       }
 
@@ -605,7 +564,7 @@ export default function PracticeScreen() {
         const currentStatus = await soundRef.current.getStatusAsync();
         if (currentStatus.isLoaded && currentStatus.isPlaying) {
           await soundRef.current.pauseAsync();
-          setStatus('Playback paused.');
+          showToast('Playback paused.', 'info');
           return;
         }
 
@@ -621,7 +580,7 @@ export default function PracticeScreen() {
           }
 
           await soundRef.current.playAsync();
-          setStatus(hasReachedEnd ? 'Replaying local recording.' : 'Playing local recording.');
+          showToast(hasReachedEnd ? 'Replaying local recording.' : 'Playing local recording.', 'info');
           return;
         }
       }
@@ -646,7 +605,7 @@ export default function PracticeScreen() {
           if (nextStatus.didJustFinish) {
             setIsPlaybackActive(false);
             setPlaybackPositionMillis(0);
-            setStatus('Playback finished.');
+            showToast('Playback finished.', 'info');
           }
         }
       );
@@ -658,11 +617,11 @@ export default function PracticeScreen() {
       setIsPlaybackActive(true);
 
       if (initialStatus.isLoaded && initialStatus.durationMillis && initialStatus.durationMillis > 0) {
-        setStatus(`Playing local recording (${formatMillis(initialStatus.durationMillis)}).`);
+        showToast(`Playing local recording (${formatMillis(initialStatus.durationMillis)}).`, 'info');
         return;
       }
 
-      setStatus('Playing local recording.');
+      showToast('Playing local recording.', 'info');
     },
     [activePlaybackAttemptTimestamp, formatMillis]
   );
@@ -695,7 +654,7 @@ export default function PracticeScreen() {
       }
 
       if (attempt.evaluation || isAttemptPending(attempt)) {
-        setStatus('Only non-submitted attempts can be deleted.');
+        showToast('Only non-submitted attempts can be deleted.', 'warning');
         return;
       }
 
@@ -706,7 +665,7 @@ export default function PracticeScreen() {
       });
 
       if (!wasDeleted) {
-        setStatus('Attempt could not be deleted.');
+        showToast('Attempt could not be deleted.', 'warning');
         return;
       }
 
@@ -719,7 +678,7 @@ export default function PracticeScreen() {
         setIsPlaybackActive(false);
       }
 
-      setStatus('Attempt deleted.');
+      showToast('Attempt deleted.', 'success');
       await refreshAttempts();
       await refreshPendingCount();
     },
@@ -774,6 +733,7 @@ export default function PracticeScreen() {
   }, [activeSession, randomCycleBySession]);
 
   return (
+    <View style={styles.screenWrapper}>
     <AppScreen
       title="Practice"
       subtitle="Run mock interview questions and capture answer attempts with recording controls."
@@ -786,7 +746,7 @@ export default function PracticeScreen() {
           <Text style={styles.dropdownTriggerText}>
             {activeSession ? toOneLinePreview(activeSession.title, 72) : 'Select a session'}
           </Text>
-          <Text style={styles.dropdownCaret}>v</Text>
+          <IconSymbol name="chevron.down" size={14} color={AppTheme.colors.textMuted} />
         </Pressable>
 
         <Text style={styles.metaText}>Question</Text>
@@ -798,7 +758,7 @@ export default function PracticeScreen() {
           <Text style={styles.dropdownTriggerText}>
             {activeQuestion ? toOneLinePreview(activeQuestion.value, 96) : 'Select a question'}
           </Text>
-          <Text style={styles.dropdownCaret}>v</Text>
+          <IconSymbol name="chevron.down" size={14} color={AppTheme.colors.textMuted} />
         </Pressable>
 
         <AppButton label="Pick Random Question" onPress={onPickRandomQuestion} variant="ghost" />
@@ -811,6 +771,7 @@ export default function PracticeScreen() {
         selectedKey={activeSessionId}
         onSelect={onSelectSession}
         onClose={() => setIsSessionDropdownOpen(false)}
+        optionTestIDPrefix="practice-dropdown"
       />
 
       <SelectorDropdown
@@ -820,6 +781,7 @@ export default function PracticeScreen() {
         selectedKey={activeQuestionValueKey}
         onSelect={onSelectQuestion}
         onClose={() => setIsQuestionDropdownOpen(false)}
+        optionTestIDPrefix="practice-dropdown"
       />
 
       <AppCard title="Selected Question Details">
@@ -859,7 +821,6 @@ export default function PracticeScreen() {
               value={transcriptDraft}
             />
 
-            {status ? <Text style={styles.statusText}>{status}</Text> : null}
           </View>
         ) : (
           <Text style={styles.bodyText}>Select a question to view full details.</Text>
@@ -998,20 +959,20 @@ export default function PracticeScreen() {
         )}
       </AppCard>
     </AppScreen>
+    <ToastContainer toastState={toastState} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+  },
   bodyText: {
     color: AppTheme.colors.textSecondary,
     fontFamily: AppTheme.typography.bodyFamily,
     fontSize: 15,
     lineHeight: 22,
-  },
-  statusText: {
-    color: AppTheme.colors.warning,
-    fontFamily: AppTheme.typography.monoFamily,
-    fontSize: 13,
   },
   metaText: {
     color: AppTheme.colors.textMuted,
@@ -1038,52 +999,6 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.typography.bodyFamily,
     fontSize: 14,
     flex: 1,
-  },
-  dropdownCaret: {
-    color: AppTheme.colors.textMuted,
-    fontFamily: AppTheme.typography.monoFamily,
-    fontSize: 12,
-  },
-  dropdownBackdrop: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    flex: 1,
-    justifyContent: 'center',
-    padding: AppTheme.spacing.md,
-  },
-  dropdownPanel: {
-    backgroundColor: AppTheme.colors.surfacePrimary,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderStrong,
-    maxHeight: '70%',
-    padding: AppTheme.spacing.sm,
-    gap: AppTheme.spacing.sm,
-  },
-  dropdownTitle: {
-    color: AppTheme.colors.textPrimary,
-    fontFamily: AppTheme.typography.headingFamily,
-    fontSize: 16,
-    textTransform: 'uppercase',
-  },
-  dropdownList: {
-    maxHeight: 420,
-  },
-  dropdownRow: {
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderSubtle,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-    paddingHorizontal: AppTheme.spacing.sm,
-    paddingVertical: AppTheme.spacing.sm,
-  },
-  dropdownRowSelected: {
-    borderColor: AppTheme.colors.accent,
-  },
-  dropdownText: {
-    color: AppTheme.colors.textSecondary,
-    fontFamily: AppTheme.typography.bodyFamily,
-    fontSize: 14,
-  },
-  dropdownTextSelected: {
-    color: AppTheme.colors.textPrimary,
   },
   selectorWrap: {
     flexDirection: 'row',

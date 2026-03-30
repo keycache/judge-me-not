@@ -1,18 +1,15 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppCard } from '@/components/ui/app-card';
 import { AppScreen } from '@/components/ui/app-screen';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SelectorDropdown } from '@/components/ui/selector-dropdown';
 import { AppTheme } from '@/constants/app-theme';
 import { Session } from '@/lib/domain/session-models';
 import { buildInsightsSummary, InsightsSummary } from '@/lib/insights';
 import { listSessions } from '@/lib/repositories/session-repository';
-
-interface SessionOption {
-  key: string;
-  label: string;
-}
 
 function toOneLinePreview(input: string, maxLength = 60): string {
   const normalized = input.replace(/\s+/g, ' ').trim();
@@ -21,49 +18,6 @@ function toOneLinePreview(input: string, maxLength = 60): string {
   }
 
   return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
-function SelectorDropdown({
-  visible,
-  title,
-  options,
-  selectedKey,
-  onSelect,
-  onClose,
-}: {
-  visible: boolean;
-  title: string;
-  options: SessionOption[];
-  selectedKey: string;
-  onSelect: (key: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
-      <Pressable style={styles.dropdownBackdrop} onPress={onClose} testID="insights-dropdown-backdrop">
-        <View style={styles.dropdownPanel}>
-          <Text style={styles.dropdownTitle}>{title}</Text>
-          <ScrollView style={styles.dropdownList}>
-            {options.map((option) => {
-              const isSelected = option.key === selectedKey;
-              return (
-                <Pressable
-                  key={option.key}
-                  testID={`insights-dropdown-option-${option.key}`}
-                  onPress={() => {
-                    onSelect(option.key);
-                    onClose();
-                  }}
-                  style={[styles.dropdownRow, isSelected ? styles.dropdownRowSelected : null]}>
-                  <Text style={[styles.dropdownText, isSelected ? styles.dropdownTextSelected : null]}>{option.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Pressable>
-    </Modal>
-  );
 }
 
 export default function InsightsScreen() {
@@ -100,7 +54,7 @@ export default function InsightsScreen() {
 
   const selectedSession = selectedSessionKey === 'all' ? null : sessions.find((session) => session.id === selectedSessionKey) ?? null;
   const hasEvaluations = (summary?.evaluatedAttempts ?? 0) > 0;
-  const sessionOptions: SessionOption[] = [
+  const sessionOptions: { key: string; label: string }[] = [
     { key: 'all', label: 'All Sessions' },
     ...sessions.map((session) => ({ key: session.id, label: toOneLinePreview(session.title, 72) })),
   ];
@@ -119,7 +73,7 @@ export default function InsightsScreen() {
           <Text style={styles.metaText}>Viewing</Text>
           <Pressable testID="insights-session-dropdown-trigger" style={styles.dropdownTrigger} onPress={() => setIsSessionDropdownOpen(true)}>
             <Text style={styles.dropdownTriggerText}>{selectorLabel}</Text>
-            <Text style={styles.dropdownCaret}>v</Text>
+            <IconSymbol name="chevron.down" size={14} color={AppTheme.colors.textMuted} />
           </Pressable>
           <Text style={styles.metaText} testID="insights-session-scope-copy">
             {selectedSession ? `Filtered to ${selectedSession.title}` : `Aggregated across ${sessions.length} sessions`}
@@ -134,6 +88,8 @@ export default function InsightsScreen() {
         selectedKey={selectedSessionKey}
         onSelect={setSelectedSessionKey}
         onClose={() => setIsSessionDropdownOpen(false)}
+        backdropTestID="insights-dropdown-backdrop"
+        optionTestIDPrefix="insights-dropdown"
       />
 
       {!isLoading && !hasEvaluations ? (
@@ -194,52 +150,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
     marginRight: AppTheme.spacing.sm,
-  },
-  dropdownCaret: {
-    color: AppTheme.colors.textMuted,
-    fontFamily: AppTheme.typography.monoFamily,
-    fontSize: 14,
-    textTransform: 'uppercase',
-  },
-  dropdownBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
-    padding: AppTheme.spacing.lg,
-  },
-  dropdownPanel: {
-    backgroundColor: AppTheme.colors.surfacePrimary,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderStrong,
-    padding: AppTheme.spacing.md,
-    gap: AppTheme.spacing.sm,
-  },
-  dropdownTitle: {
-    color: AppTheme.colors.textPrimary,
-    fontFamily: AppTheme.typography.headingFamily,
-    fontSize: 18,
-    textTransform: 'uppercase',
-  },
-  dropdownList: {
-    maxHeight: 320,
-  },
-  dropdownRow: {
-    paddingVertical: AppTheme.spacing.sm,
-    paddingHorizontal: AppTheme.spacing.sm,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.borderSubtle,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-  },
-  dropdownRowSelected: {
-    borderColor: AppTheme.colors.accent,
-  },
-  dropdownText: {
-    color: AppTheme.colors.textSecondary,
-    fontFamily: AppTheme.typography.bodyFamily,
-    fontSize: 14,
-  },
-  dropdownTextSelected: {
-    color: AppTheme.colors.textPrimary,
   },
   metricColumn: {
     flex: 1,

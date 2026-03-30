@@ -8,6 +8,7 @@ import { AppCard } from '@/components/ui/app-card';
 import { AppInput } from '@/components/ui/app-input';
 import { AppScreen } from '@/components/ui/app-screen';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ToastContainer, useToast } from '@/components/ui/toast';
 import { AppTheme } from '@/constants/app-theme';
 import { Difficulty } from '@/lib/domain/interview-models';
 import { Session } from '@/lib/domain/session-models';
@@ -66,7 +67,7 @@ export default function PrepareScreen() {
   const [images, setImages] = useState<ImageInput[]>([]);
   const [questionCount, setQuestionCount] = useState('20');
   const [selectedDifficulties, setSelectedDifficulties] = useState<Difficulty[]>(['Easy', 'Medium', 'Hard']);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const { showToast, toastState } = useToast();
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isGeneratingSession, setIsGeneratingSession] = useState(false);
@@ -107,7 +108,6 @@ export default function PrepareScreen() {
 
   const onSwitchMode = useCallback((nextMode: InputMode) => {
     setMode(nextMode);
-    setValidationErrors([]);
 
     if (nextMode === 'text') {
       setImages([]);
@@ -126,19 +126,18 @@ export default function PrepareScreen() {
       };
 
       if (images.some((image) => image.dedupeKey === dedupeKey)) {
-        setValidationErrors(['This image has already been added.']);
+        showToast('This image has already been added.', 'warning');
         return;
       }
 
       const nextImages = [...images, nextImage];
       const validation = validateImageSelection(nextImages);
       if (!validation.ok) {
-        setValidationErrors(validation.errors);
+        showToast(validation.errors[0] ?? 'Image validation failed.', 'warning');
         return;
       }
 
       setImages(nextImages);
-      setValidationErrors([]);
     },
     [images]
   );
@@ -146,7 +145,7 @@ export default function PrepareScreen() {
   const onPickFromGallery = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setValidationErrors(['Gallery permission is required to pick images.']);
+      showToast('Gallery permission is required to pick images.', 'warning');
       return;
     }
 
@@ -165,7 +164,7 @@ export default function PrepareScreen() {
   const onTakePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      setValidationErrors(['Camera permission is required to capture images.']);
+      showToast('Camera permission is required to capture images.', 'warning');
       return;
     }
 
@@ -183,7 +182,6 @@ export default function PrepareScreen() {
 
   const onRemoveImage = useCallback((imageUri: string) => {
     setImages((current) => current.filter((image) => image.uri !== imageUri));
-    setValidationErrors([]);
   }, []);
 
   const onGenerate = useCallback(async () => {
@@ -204,11 +202,10 @@ export default function PrepareScreen() {
     ];
 
     if (aggregatedErrors.length > 0) {
-      setValidationErrors(aggregatedErrors);
+      showToast(aggregatedErrors[0], 'warning');
       return;
     }
 
-    setValidationErrors([]);
     setIsGeneratingSession(true);
     setPendingSessionTitle(null);
     setGenerationStatus(mode === 'image' ? 'Analyzing images and drafting questions...' : 'Reading role context and drafting questions...');
@@ -260,7 +257,7 @@ export default function PrepareScreen() {
       await loadPersistedSessions();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Session generation failed.';
-      setValidationErrors([message]);
+      showToast(message, 'warning');
     } finally {
       setIsGeneratingSession(false);
       setGenerationStatus('');
@@ -298,6 +295,7 @@ export default function PrepareScreen() {
   }, [loadPersistedSessions]);
 
   return (
+    <View style={styles.screenWrapper}>
     <AppScreen
       title="Prepare"
       subtitle="Generate interview questions by role context, then track session progress by difficulty tier."
@@ -390,15 +388,6 @@ export default function PrepareScreen() {
               <Text style={styles.loadingTitle}>{pendingSessionTitle ?? 'Generating session draft...'}</Text>
               <Text style={styles.loadingText}>{generationStatus}</Text>
             </View>
-          </View>
-        ) : null}
-        {validationErrors.length > 0 ? (
-          <View testID="prepare-validation-errors" style={styles.errorList}>
-            {validationErrors.map((error, index) => (
-              <Text key={`${error}-${index.toString()}`} style={styles.errorText}>
-                {error}
-              </Text>
-            ))}
           </View>
         ) : null}
       </AppCard>
@@ -514,10 +503,15 @@ export default function PrepareScreen() {
         </View>
       </Modal>
     </AppScreen>
+    <ToastContainer toastState={toastState} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+  },
   row: {
     flexDirection: 'row',
     gap: AppTheme.spacing.sm,
@@ -687,18 +681,6 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.typography.bodyFamily,
     fontSize: 13,
     lineHeight: 18,
-  },
-  errorList: {
-    borderWidth: 1,
-    borderColor: AppTheme.colors.warning,
-    backgroundColor: AppTheme.colors.surfaceSecondary,
-    padding: AppTheme.spacing.sm,
-    gap: AppTheme.spacing.xs,
-  },
-  errorText: {
-    color: AppTheme.colors.warning,
-    fontFamily: AppTheme.typography.bodyFamily,
-    fontSize: 13,
   },
   sessionRow: {
     borderColor: AppTheme.colors.borderSubtle,

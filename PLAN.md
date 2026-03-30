@@ -9,7 +9,7 @@
 - Phase 6: Complete
 - Phase 6.1: Complete
 - Phase 7: In progress
-- Phase 8: Not started
+- Phase 8: In progress (8A complete)
 
 ---
 

@@ -6,6 +6,7 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppCard } from '@/components/ui/app-card';
 import { AppInput } from '@/components/ui/app-input';
 import { AppScreen } from '@/components/ui/app-screen';
+import { ToastContainer, useToast } from '@/components/ui/toast';
 import { AppTheme } from '@/constants/app-theme';
 import { useApiKey } from '@/hooks/use-api-key';
 import {
@@ -24,15 +25,13 @@ export default function ProfileScreen() {
   const contentBottomPadding = tabBarHeight;
   const { apiKey, isLoading, loadApiKey, persistApiKey, removeApiKey } = useApiKey();
   const [draftKey, setDraftKey] = useState(apiKey ?? '');
-  const [status, setStatus] = useState('');
+  const { showToast, toastState } = useToast();
   const [modelVariant, setModelVariant] = useState<ModelVariant>('gemini-3.1-flash-lite-preview');
   const [strictness, setStrictness] = useState<EvaluationStrictness>('balanced');
   const [systemPersona, setSystemPersona] = useState('Direct and constructive interview coach');
   const [recordingLimitSeconds, setRecordingLimitSeconds] = useState(
     DEFAULT_APP_SETTINGS.recordingLimitSeconds.toString()
   );
-  const [promptStatus, setPromptStatus] = useState('');
-  const [resetStatus, setResetStatus] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
@@ -53,24 +52,24 @@ export default function ProfileScreen() {
 
   async function onSave() {
     if (draftKey.trim().length === 0) {
-      setStatus('API key cannot be empty.');
+      showToast('API key cannot be empty.', 'warning');
       return;
     }
 
     await persistApiKey(draftKey);
-    setStatus('API key updated.');
+    showToast('API key updated.', 'success');
   }
 
   async function onClear() {
     await removeApiKey();
     setDraftKey('');
-    setStatus('API key removed.');
+    showToast('API key removed.', 'success');
   }
 
   async function onSavePromptSettings() {
     const limit = Number(recordingLimitSeconds);
     if (!Number.isInteger(limit) || limit < 10 || limit > 600) {
-      setPromptStatus('Recording limit must be an integer between 10 and 600 seconds.');
+      showToast('Recording limit must be an integer between 10 and 600 seconds.', 'warning');
       return;
     }
 
@@ -82,7 +81,7 @@ export default function ProfileScreen() {
         systemPersona,
       },
     });
-    setPromptStatus('Prompt and practice settings updated.');
+    showToast('Prompt and practice settings updated.', 'success');
   }
 
   async function executeClearAllData() {
@@ -96,11 +95,9 @@ export default function ProfileScreen() {
       setStrictness(DEFAULT_APP_SETTINGS.promptSettings.evaluationStrictness);
       setSystemPersona(DEFAULT_APP_SETTINGS.promptSettings.systemPersona);
       setRecordingLimitSeconds(DEFAULT_APP_SETTINGS.recordingLimitSeconds.toString());
-      setStatus('');
-      setPromptStatus('');
-      setResetStatus('All local app data cleared. Returning to setup.');
+      showToast('All local app data cleared. Returning to setup.', 'info');
     } catch (error) {
-      setResetStatus(error instanceof Error ? error.message : 'Failed to clear local app data.');
+      showToast(error instanceof Error ? error.message : 'Failed to clear local app data.', 'warning');
     } finally {
       setIsResetting(false);
     }
@@ -139,6 +136,7 @@ export default function ProfileScreen() {
   });
 
   return (
+    <View style={styles.screenWrapper}>
     <AppScreen
       title="Profile"
       subtitle="Manage account-level settings. API key editing is available here and on first-run setup."
@@ -159,7 +157,6 @@ export default function ProfileScreen() {
           <AppButton label="Save Key" onPress={onSave} />
           <AppButton label="Clear" onPress={onClear} variant="ghost" />
         </View>
-        {status ? <Text style={styles.statusText}>{status}</Text> : null}
       </AppCard>
 
       <AppCard title="App State">
@@ -177,7 +174,6 @@ export default function ProfileScreen() {
           disabled={isResetting}
           testID="profile-clear-all-data"
         />
-        {resetStatus ? <Text style={styles.statusText}>{resetStatus}</Text> : null}
       </AppCard>
 
       <AppCard title="Prompt Settings">
@@ -218,17 +214,21 @@ export default function ProfileScreen() {
         <AppInput keyboardType="number-pad" onChangeText={setRecordingLimitSeconds} value={recordingLimitSeconds} />
 
         <AppButton label="Save Prompt + Practice Settings" onPress={onSavePromptSettings} />
-        {promptStatus ? <Text style={styles.statusText}>{promptStatus}</Text> : null}
       </AppCard>
 
       <AppCard title="Prompt Preview">
         <Text style={styles.previewText}>{promptPreview}</Text>
       </AppCard>
     </AppScreen>
+    <ToastContainer toastState={toastState} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+  },
   label: {
     color: AppTheme.colors.textSecondary,
     fontFamily: AppTheme.typography.bodyFamily,
