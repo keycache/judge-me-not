@@ -32,6 +32,7 @@ const MAPPING = {
   'xmark': 'close',
   'shuffle': 'shuffle',
   'exclamationmark.circle': 'error-outline',
+  'square.and.pencil': 'edit-note',
 } as IconMapping;
 
 /**

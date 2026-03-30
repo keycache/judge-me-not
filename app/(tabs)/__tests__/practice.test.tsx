@@ -16,6 +16,10 @@ jest.mock('@react-navigation/bottom-tabs', () => ({
   useBottomTabBarHeight: jest.fn(() => 0),
 }));
 
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(() => ({ push: jest.fn() })),
+}));
+
 jest.mock('@react-navigation/native', () => ({
   // Keep focus effects inert in unit tests to avoid duplicate async reload cycles.
   useFocusEffect: jest.fn(),
@@ -730,5 +734,78 @@ describe('practice screen phase 8c — recording UX + polish', () => {
       expect(panel).toBeTruthy();
       expect(panel).toHaveStyle({ maxHeight: 220 });
     });
+  });
+});
+
+describe('practice screen phase 8e — no-sessions empty state', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const { useRouter } = jest.requireMock('expo-router') as { useRouter: jest.Mock };
+    useRouter.mockReturnValue({ push: jest.fn() });
+
+    mockPatchAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coach',
+      },
+    });
+    mockGetAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coach',
+      },
+    });
+    mockListPendingEvaluations.mockResolvedValue([]);
+    mockProcessPendingEvaluations.mockResolvedValue(0);
+    mockListAttempts.mockResolvedValue([]);
+  });
+
+  it('shows single empty state card with headline and CTA when no sessions exist', async () => {
+    mockListSessions.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-no-sessions-headline')).toBeTruthy();
+      expect(screen.getByText('No sessions yet')).toBeTruthy();
+      expect(screen.getByTestId('practice-no-sessions-cta')).toBeTruthy();
+      expect(screen.getByText('Go to Prepare')).toBeTruthy();
+    });
+  });
+
+  it('hides selection dropdowns when no sessions exist', async () => {
+    mockListSessions.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-no-sessions-headline')).toBeTruthy();
+    });
+
+    expect(screen.queryByTestId('practice-session-dropdown-trigger')).toBeNull();
+    expect(screen.queryByTestId('practice-question-dropdown-trigger')).toBeNull();
+  });
+
+  it('CTA navigates to Prepare tab', async () => {
+    mockListSessions.mockResolvedValue([]);
+    const mockPush = jest.fn();
+    const { useRouter } = jest.requireMock('expo-router') as { useRouter: jest.Mock };
+    useRouter.mockReturnValue({ push: mockPush });
+
+    const screen = await renderPracticeScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-no-sessions-cta')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('practice-no-sessions-cta'));
+
+    expect(mockPush).toHaveBeenCalledWith('/(tabs)');
   });
 });

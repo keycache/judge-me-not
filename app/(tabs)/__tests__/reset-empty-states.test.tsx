@@ -164,9 +164,8 @@ describe('empty states after clear all', () => {
     await flushAsyncWork();
 
     await waitFor(() => {
-      expect(screen.getByText('No sessions available.')).toBeTruthy();
-      expect(screen.getByText('Select a question to view full details.')).toBeTruthy();
-      expect(screen.getByText('Select a question to review previous attempts.')).toBeTruthy();
+      expect(screen.getByText('No sessions yet')).toBeTruthy();
+      expect(screen.getByText('Go to Prepare')).toBeTruthy();
     });
   });
 

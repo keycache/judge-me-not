@@ -3,6 +3,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as Network from 'expo-network';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -94,6 +95,7 @@ function formatSeconds(seconds: number): string {
 }
 
 export default function PracticeScreen() {
+  const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const contentBottomPadding = tabBarHeight;
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -746,8 +748,22 @@ export default function PracticeScreen() {
       subtitle="Run mock interview questions and capture answer attempts with recording controls."
       excludeBottomSafeArea
       contentBottomPadding={contentBottomPadding}>
+      {sessions.length === 0 ? (
+        <AppCard title="No Sessions Yet">
+          <Text style={styles.emptyHeadline} testID="practice-no-sessions-headline">No sessions yet</Text>
+          <Text style={styles.bodyText} testID="practice-no-sessions-body">
+            Generate a session in Prepare to start practising.
+          </Text>
+          <AppButton
+            label="Go to Prepare"
+            testID="practice-no-sessions-cta"
+            onPress={() => router.push('/(tabs)')}
+            variant="ghost"
+          />
+        </AppCard>
+      ) : (
+        <>
       <AppCard title="Session + Question Selection">
-        {sessions.length === 0 ? <Text style={styles.bodyText}>No sessions available.</Text> : null}
         <Text style={styles.metaText}>Session</Text>
         <Pressable testID="practice-session-dropdown-trigger" style={styles.dropdownTrigger} onPress={() => setIsSessionDropdownOpen(true)}>
           <Text style={styles.dropdownTriggerText}>
@@ -1010,6 +1026,8 @@ export default function PracticeScreen() {
           <Text style={styles.bodyText}>Select a question to review previous attempts.</Text>
         )}
       </AppCard>
+        </>
+      )}
     </AppScreen>
     <ToastContainer toastState={toastState} />
     </View>
@@ -1019,6 +1037,12 @@ export default function PracticeScreen() {
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
+  },
+  emptyHeadline: {
+    color: AppTheme.colors.textPrimary,
+    fontFamily: AppTheme.typography.headingFamily,
+    fontSize: 20,
+    textTransform: 'uppercase',
   },
   bodyText: {
     color: AppTheme.colors.textSecondary,
