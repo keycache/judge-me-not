@@ -565,8 +565,8 @@ Full-app UX polish pass based on the holistic review in `PROPOSAL.md`.
 Changes are sequenced so each sub-phase is shippable on its own and leaves the test suite green.
 
 ### Sub-Phases
-- Phase 8A — Foundation (shared infra + hygiene)
-- Phase 8B — Prepare Screen
+- Phase 8A — Foundation (shared infra + hygiene) ✅ Complete
+- Phase 8B — Prepare Screen ✅ Complete
 - Phase 8C — Practice Screen
 - Phase 8D — Insights + Profile
 - Phase 8E — Navigation & Information Architecture

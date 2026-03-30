@@ -222,10 +222,15 @@ describe('prepare session details modal', () => {
     const screen = render(<PrepareScreen />);
 
     fireEvent.press(screen.getByTestId('prepare-mode-image'));
-    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
 
     await waitFor(() => {
       expect(screen.getByTestId('prepare-image-preview-strip')).toBeTruthy();
+      expect(screen.getByTestId('prepare-image-strip-placeholder-0')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('prepare-add-image'));
+
+    await waitFor(() => {
       expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
       expect(screen.queryByText('file:///tmp/uploaded-preview.png')).toBeNull();
     });
@@ -234,6 +239,7 @@ describe('prepare session details modal', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('prepare-image-preview-0')).toBeNull();
+      expect(screen.getByTestId('prepare-image-strip-placeholder-0')).toBeTruthy();
     });
   });
 
@@ -265,13 +271,13 @@ describe('prepare session details modal', () => {
     const screen = render(<PrepareScreen />);
 
     fireEvent.press(screen.getByTestId('prepare-mode-image'));
-    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+    fireEvent.press(screen.getByTestId('prepare-add-image'));
 
     await waitFor(() => {
       expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+    fireEvent.press(screen.getByTestId('prepare-add-image'));
 
     await waitFor(() => {
       expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
@@ -368,7 +374,7 @@ describe('prepare session details modal', () => {
 
     fireEvent.changeText(screen.getByTestId('prepare-text-description'), 'Senior platform engineer role with distributed systems focus.');
     fireEvent.press(screen.getByTestId('prepare-mode-image'));
-    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+    fireEvent.press(screen.getByTestId('prepare-add-image'));
 
     await waitFor(() => {
       expect(screen.getByTestId('prepare-image-preview-0')).toBeTruthy();
@@ -383,6 +389,91 @@ describe('prepare session details modal', () => {
       expect(mockSaveSession).toHaveBeenCalled();
       expect(screen.getByDisplayValue('')).toBeTruthy();
       expect(screen.queryByTestId('prepare-image-preview-0')).toBeNull();
+    });
+  });
+});
+
+describe('prepare screen phase 8b — image source UX', () => {
+  const mockLaunchCameraAsync = ImagePicker.launchCameraAsync as jest.MockedFunction<typeof ImagePicker.launchCameraAsync>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListSessions.mockResolvedValue([]);
+    mockGetAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coach',
+      },
+    });
+  });
+
+  it('gallery tab only selects source — does not launch image picker', async () => {
+    const screen = render(<PrepareScreen />);
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+
+    await waitFor(() => {
+      expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  it('camera tab only selects source — does not launch camera', async () => {
+    const screen = render(<PrepareScreen />);
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+    fireEvent.press(screen.getByTestId('prepare-open-camera'));
+
+    await waitFor(() => {
+      expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  it('add image button launches gallery picker when gallery source is active', async () => {
+    mockLaunchImageLibraryAsync.mockResolvedValueOnce({ canceled: true, assets: [] });
+
+    const screen = render(<PrepareScreen />);
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+    fireEvent.press(screen.getByTestId('prepare-pick-gallery'));
+    fireEvent.press(screen.getByTestId('prepare-add-image'));
+
+    await waitFor(() => {
+      expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(1);
+      expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  it('add image button launches camera when camera source is active', async () => {
+    mockLaunchCameraAsync.mockResolvedValueOnce({ canceled: true, assets: [] });
+
+    const screen = render(<PrepareScreen />);
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+    fireEvent.press(screen.getByTestId('prepare-open-camera'));
+    fireEvent.press(screen.getByTestId('prepare-add-image'));
+
+    await waitFor(() => {
+      expect(ImagePicker.launchCameraAsync).toHaveBeenCalledTimes(1);
+      expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  it('image strip with placeholder slots is visible immediately on switching to image mode', async () => {
+    const screen = render(<PrepareScreen />);
+    fireEvent.press(screen.getByTestId('prepare-mode-image'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('prepare-image-preview-strip')).toBeTruthy();
+      expect(screen.getByTestId('prepare-image-strip-placeholder-0')).toBeTruthy();
+    });
+  });
+
+  it('status slot is always present below generate button when idle', async () => {
+    const screen = render(<PrepareScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('prepare-status-slot')).toBeTruthy();
+      expect(screen.queryByTestId('prepare-generation-loading')).toBeNull();
     });
   });
 });

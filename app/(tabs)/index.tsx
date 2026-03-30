@@ -184,6 +184,14 @@ export default function PrepareScreen() {
     setImages((current) => current.filter((image) => image.uri !== imageUri));
   }, []);
 
+  const onAddImage = useCallback(async () => {
+    if (imageSourceTab === 'gallery') {
+      await onPickFromGallery();
+    } else {
+      await onTakePhoto();
+    }
+  }, [imageSourceTab, onPickFromGallery, onTakePhoto]);
+
   const onGenerate = useCallback(async () => {
     if (isGeneratingSession) {
       return;
@@ -334,44 +342,49 @@ export default function PrepareScreen() {
                 <Pressable
                   testID="prepare-pick-gallery"
                   style={[styles.nestedTabButton, imageSourceTab === 'gallery' ? styles.nestedTabButtonActive : null]}
-                  onPress={() => {
-                    setImageSourceTab('gallery');
-                    void onPickFromGallery();
-                  }}>
+                  onPress={() => setImageSourceTab('gallery')}>
                   <Text style={[styles.nestedTabText, imageSourceTab === 'gallery' ? styles.nestedTabTextActive : null]}>Gallery</Text>
                 </Pressable>
                 <Pressable
                   testID="prepare-open-camera"
                   style={[styles.nestedTabButton, imageSourceTab === 'camera' ? styles.nestedTabButtonActive : null]}
-                  onPress={() => {
-                    setImageSourceTab('camera');
-                    void onTakePhoto();
-                  }}>
+                  onPress={() => setImageSourceTab('camera')}>
                   <Text style={[styles.nestedTabText, imageSourceTab === 'camera' ? styles.nestedTabTextActive : null]}>Take Photo</Text>
                 </Pressable>
               </View>
             </View>
+            <AppButton
+              label="+ Add Image"
+              testID="prepare-add-image"
+              onPress={onAddImage}
+              variant="ghost"
+            />
             <Text style={styles.hintText}>Max {MAX_IMAGES} images, each up to {Math.round(MAX_IMAGE_SIZE_BYTES / (1024 * 1024))}MB.</Text>
-            {images.length > 0 ? (
-              <View style={styles.imagePreviewStrip} testID="prepare-image-preview-strip">
-                {images.map((image, index) => (
-                  <View
-                    testID={`prepare-image-preview-${index.toString()}`}
-                    key={image.uri + image.fileSizeBytes.toString()}
-                    style={[styles.imagePreviewCard, { width: imagePreviewSize }]}>
-                    <Image source={{ uri: image.uri }} style={[styles.imagePreview, { width: imagePreviewSize, height: imagePreviewSize }]} resizeMode="cover" />
-                    <Pressable
-                      accessibilityLabel={`Remove selected image ${index + 1}`}
-                      hitSlop={8}
-                      onPress={() => onRemoveImage(image.uri)}
-                      style={styles.imagePreviewRemoveButton}
-                      testID={`prepare-remove-image-${index.toString()}`}>
-                      <Text style={styles.imagePreviewRemoveText}>x</Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+            <View style={styles.imagePreviewStrip} testID="prepare-image-preview-strip">
+              {images.map((image, index) => (
+                <View
+                  testID={`prepare-image-preview-${index.toString()}`}
+                  key={image.uri + image.fileSizeBytes.toString()}
+                  style={[styles.imagePreviewCard, { width: imagePreviewSize }]}>
+                  <Image source={{ uri: image.uri }} style={[styles.imagePreview, { width: imagePreviewSize, height: imagePreviewSize }]} resizeMode="cover" />
+                  <Pressable
+                    accessibilityLabel={`Remove selected image ${index + 1}`}
+                    hitSlop={10}
+                    onPress={() => onRemoveImage(image.uri)}
+                    style={styles.imagePreviewRemoveButton}
+                    testID={`prepare-remove-image-${index.toString()}`}>
+                    <IconSymbol name="xmark" size={12} color={AppTheme.colors.textPrimary} />
+                  </Pressable>
+                </View>
+              ))}
+              {Array.from({ length: MAX_IMAGES - images.length }, (_, i) => (
+                <View
+                  key={`placeholder-${i.toString()}`}
+                  testID={`prepare-image-strip-placeholder-${i.toString()}`}
+                  style={[styles.imagePreviewCard, styles.imagePreviewPlaceholder, { width: imagePreviewSize, height: imagePreviewSize }]}
+                />
+              ))}
+            </View>
           </View>
         )}
 
@@ -381,15 +394,17 @@ export default function PrepareScreen() {
           onPress={onGenerate}
           disabled={isGeneratingSession}
         />
-        {isGeneratingSession ? (
-          <View testID="prepare-generation-loading" style={styles.loadingStateCard}>
-            <ActivityIndicator color={AppTheme.colors.accent} size="small" />
-            <View style={styles.loadingCopyColumn}>
-              <Text style={styles.loadingTitle}>{pendingSessionTitle ?? 'Generating session draft...'}</Text>
-              <Text style={styles.loadingText}>{generationStatus}</Text>
+        <View testID="prepare-status-slot" style={styles.statusSlot}>
+          {isGeneratingSession ? (
+            <View testID="prepare-generation-loading" style={styles.loadingStateCard}>
+              <ActivityIndicator color={AppTheme.colors.accent} size="small" />
+              <View style={styles.loadingCopyColumn}>
+                <Text style={styles.loadingTitle}>{pendingSessionTitle ?? 'Generating session draft...'}</Text>
+                <Text style={styles.loadingText}>{generationStatus}</Text>
+              </View>
             </View>
-          </View>
-        ) : null}
+          ) : null}
+        </View>
       </AppCard>
 
       <AppCard title="Difficulty Tiers">
@@ -423,6 +438,11 @@ export default function PrepareScreen() {
         {sessions.length === 0 ? <Text testID="prepare-no-sessions" style={styles.bodyText}>No sessions yet.</Text> : null}
         {sessions.map((session, index) => (
           <Pressable key={session.id} testID={`prepare-session-row-${index.toString()}`} style={styles.sessionRow} onPress={() => onOpenSessionDetails(session)}>
+            <View style={styles.sessionRowContent}>
+              <Text style={styles.sessionTitle}>{session.title}</Text>
+              <Text style={styles.sessionMeta}>{new Date(session.createdAtIso).toLocaleString()}</Text>
+              <Text style={styles.sessionMeta}>{session.questionList.questions.length} questions</Text>
+            </View>
             <Pressable
               accessibilityLabel={`Delete ${session.title}`}
               hitSlop={10}
@@ -431,9 +451,6 @@ export default function PrepareScreen() {
               testID={`prepare-delete-session-${index.toString()}`}>
               <IconSymbol color={AppTheme.colors.warning} name="trash.fill" size={18} />
             </Pressable>
-              <Text style={styles.sessionTitle}>{session.title}</Text>
-              <Text style={styles.sessionMeta}>{new Date(session.createdAtIso).toLocaleString()}</Text>
-              <Text style={styles.sessionMeta}>{session.questionList.questions.length} questions</Text>
           </Pressable>
         ))}
       </AppCard>
@@ -577,10 +594,10 @@ const styles = StyleSheet.create({
     gap: AppTheme.spacing.sm,
   },
   nestedTabsContainer: {
-    marginLeft: AppTheme.spacing.md,
-    paddingLeft: AppTheme.spacing.sm,
-    borderLeftWidth: 1,
-    borderLeftColor: AppTheme.colors.borderStrong,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    padding: AppTheme.spacing.xs,
     gap: AppTheme.spacing.xs,
   },
   nestedTabsLabel: {
@@ -637,25 +654,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: AppTheme.spacing.xxs,
     right: AppTheme.spacing.xxs,
-    width: 18,
-    height: 18,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(13, 17, 23, 0.88)',
     borderWidth: 1,
     borderColor: AppTheme.colors.borderStrong,
   },
-  imagePreviewRemoveText: {
-    color: AppTheme.colors.textPrimary,
-    fontFamily: AppTheme.typography.headingFamily,
-    fontSize: 12,
-    lineHeight: 12,
-    textTransform: 'uppercase',
+  imagePreviewPlaceholder: {
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
   },
   hintText: {
     color: AppTheme.colors.textMuted,
     fontFamily: AppTheme.typography.monoFamily,
     fontSize: 12,
+  },
+  statusSlot: {
+    minHeight: 52,
+    justifyContent: 'center',
   },
   loadingStateCard: {
     borderWidth: 1,
@@ -683,15 +701,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderColor: AppTheme.colors.borderSubtle,
     borderWidth: 1,
     backgroundColor: AppTheme.colors.surfaceSecondary,
     paddingHorizontal: AppTheme.spacing.md,
     paddingVertical: AppTheme.spacing.sm,
     borderRadius: AppTheme.radius.none,
+    gap: AppTheme.spacing.sm,
+  },
+  sessionRowContent: {
+    flex: 1,
     gap: AppTheme.spacing.xs,
-    position: 'relative',
-    paddingRight: AppTheme.spacing.xl * 2,
   },
   sessionTitle: {
     color: AppTheme.colors.textPrimary,
@@ -704,14 +726,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   deleteIconButton: {
-    position: 'absolute',
-    top: AppTheme.spacing.sm,
-    right: AppTheme.spacing.sm,
     width: 28,
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1,
   },
   modalBackdrop: {
     flex: 1,
