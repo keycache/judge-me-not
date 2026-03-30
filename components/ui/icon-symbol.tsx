@@ -30,6 +30,7 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'chevron.down': 'expand-more',
   'xmark': 'close',
+  'shuffle': 'shuffle',
 } as IconMapping;
 
 /**

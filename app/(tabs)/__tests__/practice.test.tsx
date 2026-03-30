@@ -1,4 +1,4 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react-native';
 
 import { buildQuestionValueKey, Question } from '@/lib/domain/interview-models';
 import { Session } from '@/lib/domain/session-models';
@@ -77,9 +77,9 @@ jest.mock('@/components/ui/app-button', () => ({
 }));
 
 jest.mock('@/components/ui/app-input', () => ({
-  AppInput: () => {
+  AppInput: ({ testID, onChangeText, value, placeholder }: { testID?: string; onChangeText?: (v: string) => void; value?: string; placeholder?: string }) => {
     const rn = jest.requireActual('react-native');
-    return <rn.View />;
+    return <rn.TextInput testID={testID} onChangeText={onChangeText} value={value} placeholder={placeholder} />;
   },
 }));
 
@@ -469,6 +469,266 @@ describe('practice screen selectors + details', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText('Play attempt playback')).toBeTruthy();
+    });
+  });
+});
+
+describe('practice screen phase 8c — recording UX + polish', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.requireMock('expo-av').Audio.Recording.mockImplementation(() => ({
+      setProgressUpdateInterval: jest.fn(),
+      prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
+      startAsync: jest.fn().mockResolvedValue(undefined),
+      setOnRecordingStatusUpdate: jest.fn(),
+      stopAndUnloadAsync: jest.fn().mockResolvedValue(undefined),
+      getURI: jest.fn().mockReturnValue('file:///tmp/test-rec.m4a'),
+    }));
+    mockPatchAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coach',
+      },
+    });
+    mockGetAppSettings.mockResolvedValue({
+      activeSessionId: null,
+      recordingLimitSeconds: 120,
+      promptSettings: {
+        modelVariant: 'gemini-3.1-flash-lite-preview',
+        evaluationStrictness: 'balanced',
+        systemPersona: 'Coach',
+      },
+    });
+    mockListPendingEvaluations.mockResolvedValue([]);
+    mockProcessPendingEvaluations.mockResolvedValue(0);
+  });
+
+  it('recording timer is hidden when idle', async () => {
+    mockListSessions.mockResolvedValue([]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    expect(screen.queryByTestId('practice-recording-timer')).toBeNull();
+  });
+
+  it('recording timer is visible when recording', async () => {
+    const session = buildSession('s-1', 'Test Session', [buildQuestion('Q1', 'Easy')], '2026-03-27T10:00:00.000Z');
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    fireEvent.press(screen.getByText('Start Recording'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-recording-timer')).toBeTruthy();
+    });
+
+    screen.unmount();
+  });
+
+  it('mic meter is hidden when idle', async () => {
+    mockListSessions.mockResolvedValue([]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    expect(screen.queryByTestId('practice-mic-meter')).toBeNull();
+  });
+
+  it('recording button has active test id while recording', async () => {
+    const session = buildSession('s-1', 'Test Session', [buildQuestion('Q1', 'Easy')], '2026-03-27T10:00:00.000Z');
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    expect(screen.queryByTestId('practice-recording-button-active')).toBeNull();
+
+    fireEvent.press(screen.getByText('Start Recording'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-recording-button-active')).toBeTruthy();
+    });
+
+    screen.unmount();
+  });
+
+  it('notes input is collapsed by default', async () => {
+    const session = buildSession('s-1', 'Test Session', [buildQuestion('Q1', 'Easy')], '2026-03-27T10:00:00.000Z');
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-selected-question-details')).toBeTruthy();
+    });
+
+    expect(screen.queryByTestId('practice-notes-input')).toBeNull();
+    expect(screen.getByTestId('practice-add-notes-button')).toBeTruthy();
+  });
+
+  it('notes input expands on add notes press', async () => {
+    const session = buildSession('s-1', 'Test Session', [buildQuestion('Q1', 'Easy')], '2026-03-27T10:00:00.000Z');
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-add-notes-button')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('practice-add-notes-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-notes-input')).toBeTruthy();
+    });
+  });
+
+  it('notes collapsed summary is shown when content exists', async () => {
+    const session = buildSession('s-1', 'Test Session', [buildQuestion('Q1', 'Easy')], '2026-03-27T10:00:00.000Z');
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-add-notes-button')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('practice-add-notes-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-notes-input')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getByTestId('practice-notes-input'), 'This is my draft answer content');
+
+    fireEvent.press(screen.getByTestId('practice-add-notes-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-notes-summary')).toBeTruthy();
+      expect(screen.getByText('This is my draft answer content')).toBeTruthy();
+    });
+  });
+
+  it('random question picker is an icon button not a full-width AppButton', async () => {
+    const session = buildSession('s-1', 'Test Session', [buildQuestion('Q1', 'Easy')], '2026-03-27T10:00:00.000Z');
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-random-question-icon-button')).toBeTruthy();
+      expect(screen.queryByText('Pick Random Question')).toBeNull();
+    });
+  });
+
+  it('past answers toggle uses chevron icon instead of Show/Hide text', async () => {
+    const session = buildSession('s-1', 'Test Session', [buildQuestion('Q1', 'Easy')], '2026-03-27T10:00:00.000Z');
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([]);
+
+    const screen = await renderPracticeScreen();
+
+    const toggle = screen.getByTestId('practice-past-answers-toggle');
+    expect(within(toggle).queryByText('Show')).toBeNull();
+    expect(within(toggle).queryByText('Hide')).toBeNull();
+    expect(within(toggle).getByText('chevron.right')).toBeTruthy();
+  });
+
+  it('attempt score renders as compact badge in header row', async () => {
+    const question = buildQuestion('Tell me about leadership.', 'Medium', 'Leadership');
+    const session = buildSession('s-1', 'Management Round', [question], '2026-03-27T10:00:00.000Z');
+
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([
+      {
+        audio_file_path: 'file:///tmp/evaluated.m4a',
+        timestamp: '2026-03-27T21:05:01.151Z',
+        evaluation: {
+          score: 7,
+          candidate_answer: 'Answer text',
+          feedback: 'Good answer',
+          gaps_identified: [],
+          model_answer: 'Model answer',
+        },
+      },
+    ]);
+
+    const screen = await renderPracticeScreen();
+
+    fireEvent.press(screen.getByTestId('practice-past-answers-toggle'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('practice-attempt-score-badge-2026-03-27T21:05:01.151Z')).toBeTruthy();
+      expect(screen.getByText('7/10')).toBeTruthy();
+    });
+  });
+
+  it('attempt score large standalone text is absent', async () => {
+    const question = buildQuestion('Tell me about leadership.', 'Medium', 'Leadership');
+    const session = buildSession('s-1', 'Management Round', [question], '2026-03-27T10:00:00.000Z');
+
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([
+      {
+        audio_file_path: 'file:///tmp/evaluated.m4a',
+        timestamp: '2026-03-27T21:05:01.151Z',
+        evaluation: {
+          score: 7,
+          candidate_answer: 'Answer text',
+          feedback: 'Good answer',
+          gaps_identified: [],
+          model_answer: 'Model answer',
+        },
+      },
+    ]);
+
+    const screen = await renderPracticeScreen();
+
+    fireEvent.press(screen.getByTestId('practice-past-answers-toggle'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('practice-attempt-score-2026-03-27T21:05:01.151Z')).toBeNull();
+      expect(screen.getByTestId('practice-attempt-score-badge-2026-03-27T21:05:01.151Z')).toBeTruthy();
+    });
+  });
+
+  it('evaluation panel uses maxHeight not percentage height', async () => {
+    const question = buildQuestion('Tell me about leadership.', 'Medium', 'Leadership');
+    const session = buildSession('s-1', 'Management Round', [question], '2026-03-27T10:00:00.000Z');
+
+    mockListSessions.mockResolvedValue([session]);
+    mockListAttempts.mockResolvedValue([
+      {
+        audio_file_path: 'file:///tmp/evaluated.m4a',
+        timestamp: '2026-03-27T21:05:01.151Z',
+        evaluation: {
+          score: 7,
+          candidate_answer: 'Answer text',
+          feedback: 'Good answer',
+          gaps_identified: [],
+          model_answer: 'Model answer',
+        },
+      },
+    ]);
+
+    const screen = await renderPracticeScreen();
+
+    fireEvent.press(screen.getByTestId('practice-past-answers-toggle'));
+
+    await waitFor(() => {
+      const panel = screen.getByTestId('practice-attempt-tab-panel-2026-03-27T21:05:01.151Z');
+      expect(panel).toBeTruthy();
+      expect(panel).toHaveStyle({ maxHeight: 220 });
     });
   });
 });

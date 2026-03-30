@@ -567,7 +567,7 @@ Changes are sequenced so each sub-phase is shippable on its own and leaves the t
 ### Sub-Phases
 - Phase 8A — Foundation (shared infra + hygiene) ✅ Complete
 - Phase 8B — Prepare Screen ✅ Complete
-- Phase 8C — Practice Screen
+- Phase 8C — Practice Screen ✅ Complete
 - Phase 8D — Insights + Profile
 - Phase 8E — Navigation & Information Architecture
 

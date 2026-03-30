@@ -87,6 +87,12 @@ function formatAttemptTimestamp(input: string): string {
   return date.toLocaleString();
 }
 
+function formatSeconds(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
 export default function PracticeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const contentBottomPadding = tabBarHeight;
@@ -111,6 +117,7 @@ export default function PracticeScreen() {
   const [isSessionDropdownOpen, setIsSessionDropdownOpen] = useState(false);
   const [isQuestionDropdownOpen, setIsQuestionDropdownOpen] = useState(false);
   const [showPastAnswers, setShowPastAnswers] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [activeAttemptTabs, setActiveAttemptTabs] = useState<Record<string, AttemptEvaluationTabKey>>({});
   const [submittingAttemptTimestamps, setSubmittingAttemptTimestamps] = useState<Set<string>>(new Set());
 
@@ -749,19 +756,29 @@ export default function PracticeScreen() {
           <IconSymbol name="chevron.down" size={14} color={AppTheme.colors.textMuted} />
         </Pressable>
 
-        <Text style={styles.metaText}>Question</Text>
-        <Pressable
-          testID="practice-question-dropdown-trigger"
-          style={styles.dropdownTrigger}
-          onPress={() => setIsQuestionDropdownOpen(true)}
-          disabled={!activeSession || questionDropdownOptions.length === 0}>
-          <Text style={styles.dropdownTriggerText}>
-            {activeQuestion ? toOneLinePreview(activeQuestion.value, 96) : 'Select a question'}
-          </Text>
-          <IconSymbol name="chevron.down" size={14} color={AppTheme.colors.textMuted} />
-        </Pressable>
-
-        <AppButton label="Pick Random Question" onPress={onPickRandomQuestion} variant="ghost" />
+        <View style={styles.questionSubsection}>
+          <View style={styles.questionSectionHeader}>
+            <Text style={styles.metaText}>Question</Text>
+            <Pressable
+              testID="practice-random-question-icon-button"
+              accessibilityLabel="Pick random question"
+              onPress={onPickRandomQuestion}
+              style={styles.shuffleButton}
+              disabled={!activeSession || questionDropdownOptions.length === 0}>
+              <IconSymbol name="shuffle" size={16} color={AppTheme.colors.textMuted} />
+            </Pressable>
+          </View>
+          <Pressable
+            testID="practice-question-dropdown-trigger"
+            style={styles.dropdownTrigger}
+            onPress={() => setIsQuestionDropdownOpen(true)}
+            disabled={!activeSession || questionDropdownOptions.length === 0}>
+            <Text style={styles.dropdownTriggerText}>
+              {activeQuestion ? toOneLinePreview(activeQuestion.value, 96) : 'Select a question'}
+            </Text>
+            <IconSymbol name="chevron.down" size={14} color={AppTheme.colors.textMuted} />
+          </Pressable>
+        </View>
       </AppCard>
 
       <SelectorDropdown
@@ -797,29 +814,58 @@ export default function PracticeScreen() {
               </View>
             </View>
 
-            <View style={styles.meterRow}>
-              <Text style={styles.metaText}>Mic Level</Text>
-              <View style={styles.meterTrack}>
-                <View style={[styles.meterFill, { width: `${isRecording ? Math.max(4, Math.round(micLevel * 100)) : 0}%` }]} />
+            {isRecording ? (
+              <View testID="practice-mic-meter" style={styles.meterRow}>
+                <Text style={styles.metaText}>Mic Level</Text>
+                <View style={styles.meterTrack}>
+                  <View style={[styles.meterFill, { width: `${Math.max(4, Math.round(micLevel * 100))}%` }]} />
+                </View>
+                <Text style={styles.metaText}>{micDb !== null ? `${Math.round(micDb)} dB` : 'n/a'}</Text>
               </View>
-              <Text style={styles.metaText}>{micDb !== null ? `${Math.round(micDb)} dB` : 'n/a'}</Text>
+            ) : null}
+
+            {isRecording ? (
+              <View testID="practice-recording-timer" style={styles.recordingTimerRow}>
+                <Text style={styles.recordingTimerText}>
+                  {formatSeconds(recordingSeconds)} / {formatSeconds(recordingLimitSeconds)}
+                </Text>
+                <View style={styles.recordingTimerTrack}>
+                  <View style={[styles.recordingTimerFill, { width: `${Math.min(100, Math.round((recordingSeconds / recordingLimitSeconds) * 100))}%` }]} />
+                </View>
+              </View>
+            ) : null}
+
+            <View
+              style={isRecording ? styles.recordingActiveWrapper : null}
+              testID={isRecording ? 'practice-recording-button-active' : undefined}>
+              <AppButton
+                label={isRecording ? 'Stop Recording' : 'Start Recording'}
+                onPress={onToggleRecording}
+                variant={isRecording ? 'ghost' : 'primary'}
+              />
             </View>
 
             <AppButton
-              label={isRecording ? 'Stop Recording' : 'Start Recording'}
-              onPress={onToggleRecording}
-              variant={isRecording ? 'ghost' : 'primary'}
+              label={showNotes ? 'Hide notes' : 'Add notes'}
+              onPress={() => setShowNotes((v) => !v)}
+              testID="practice-add-notes-button"
+              variant="ghost"
             />
-
-            <Text style={styles.bodyText}>Recording Seconds: {recordingSeconds}</Text>
-
-            <AppInput
-              multiline
-              numberOfLines={3}
-              onChangeText={setTranscriptDraft}
-              placeholder="Optional notes used as candidate answer text when submitting"
-              value={transcriptDraft}
-            />
+            {showNotes ? (
+              <AppInput
+                multiline
+                numberOfLines={3}
+                onChangeText={setTranscriptDraft}
+                placeholder="Optional notes used as candidate answer text when submitting"
+                testID="practice-notes-input"
+                value={transcriptDraft}
+              />
+            ) : transcriptDraft ? (
+              <Pressable testID="practice-notes-summary" onPress={() => setShowNotes(true)} style={styles.notesSummaryRow}>
+                <Text style={styles.notesSummaryText} numberOfLines={1}>{toOneLinePreview(transcriptDraft)}</Text>
+                <IconSymbol name="pencil" size={12} color={AppTheme.colors.textMuted} />
+              </Pressable>
+            ) : null}
 
           </View>
         ) : (
@@ -833,7 +879,9 @@ export default function PracticeScreen() {
             <View style={styles.pastAnswersHeaderRow}>
               <Text style={styles.bodyText}>{`Count: ${attempts.length}`}</Text>
               <Pressable testID="practice-past-answers-toggle" onPress={() => setShowPastAnswers((value) => !value)}>
-                <Text style={styles.pastAnswersToggleText}>{showPastAnswers ? 'Hide' : 'Show'}</Text>
+                <View style={showPastAnswers ? styles.chevronRotated : null}>
+                  <IconSymbol name="chevron.right" size={16} color={AppTheme.colors.textMuted} />
+                </View>
               </Pressable>
             </View>
 
@@ -856,13 +904,17 @@ export default function PracticeScreen() {
                     <View key={attempt.timestamp} style={styles.attemptRow} testID={`practice-attempt-row-${attempt.timestamp}`}>
                       <View style={styles.attemptHeaderRow}>
                         <Text style={styles.attemptTitle} testID={`practice-attempt-title-${attempt.timestamp}`}>{`Attempt #${attemptNumber}`}</Text>
+                        {attempt.evaluation ? (
+                          <View style={styles.scoreBadge} testID={`practice-attempt-score-badge-${attempt.timestamp}`}>
+                            <Text style={styles.scoreBadgeText}>{`${attempt.evaluation.score}/10`}</Text>
+                          </View>
+                        ) : null}
                         <View style={styles.attemptStatusBadge} testID={`practice-attempt-status-${attempt.timestamp}`}>
                           <IconSymbol name={getAttemptStatusIconName(attemptStatus)} size={16} color={getAttemptStatusColor(attemptStatus)} />
                           <Text style={styles.metaText}>{attemptStatus}</Text>
                         </View>
                       </View>
                       <Text style={styles.metaText}>{formatAttemptTimestamp(attempt.timestamp)}</Text>
-                      {attempt.evaluation ? <Text style={styles.scoreText} testID={`practice-attempt-score-${attempt.timestamp}`}>{`${attempt.evaluation.score}/10`}</Text> : null}
                       <View style={styles.buttonRow}>
                         {!isSubmitted ? (
                           <AppButton
@@ -1031,11 +1083,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  pastAnswersToggleText: {
-    color: AppTheme.colors.textMuted,
-    fontFamily: AppTheme.typography.monoFamily,
-    fontSize: 12,
-    textTransform: 'uppercase',
+  chevronRotated: {
+    transform: [{ rotate: '90deg' }],
   },
   collapsibleBody: {
     gap: AppTheme.spacing.sm,
@@ -1103,11 +1152,72 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.borderStrong,
     backgroundColor: AppTheme.colors.surfacePrimary,
   },
-  scoreText: {
-    color: AppTheme.colors.textPrimary,
-    fontFamily: AppTheme.typography.headingFamily,
-    fontSize: 28,
-    lineHeight: 30,
+  scoreBadge: {
+    paddingHorizontal: AppTheme.spacing.xs,
+    paddingVertical: AppTheme.spacing.xxs,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.success,
+    backgroundColor: AppTheme.colors.surfacePrimary,
+  },
+  scoreBadgeText: {
+    color: AppTheme.colors.success,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 12,
+  },
+  recordingActiveWrapper: {
+    borderWidth: 1,
+    borderColor: AppTheme.colors.warning,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+  },
+  recordingTimerRow: {
+    gap: AppTheme.spacing.xs,
+  },
+  recordingTimerText: {
+    color: AppTheme.colors.accent,
+    fontFamily: AppTheme.typography.monoFamily,
+    fontSize: 13,
+  },
+  recordingTimerTrack: {
+    height: 4,
+    backgroundColor: AppTheme.colors.borderStrong,
+  },
+  recordingTimerFill: {
+    height: '100%',
+    backgroundColor: AppTheme.colors.accent,
+  },
+  questionSubsection: {
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    padding: AppTheme.spacing.xs,
+    gap: AppTheme.spacing.xs,
+  },
+  questionSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  shuffleButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notesSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AppTheme.spacing.xs,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.borderSubtle,
+    backgroundColor: AppTheme.colors.surfaceSecondary,
+    paddingHorizontal: AppTheme.spacing.sm,
+    paddingVertical: AppTheme.spacing.xs,
+  },
+  notesSummaryText: {
+    flex: 1,
+    color: AppTheme.colors.textMuted,
+    fontFamily: AppTheme.typography.bodyFamily,
+    fontSize: 13,
   },
   evaluationPanel: {
     gap: AppTheme.spacing.sm,
@@ -1148,7 +1258,7 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.borderSubtle,
     backgroundColor: AppTheme.colors.surfacePrimary,
     padding: AppTheme.spacing.sm,
-    height: '40%',
+    maxHeight: 220,
   },
   gapList: {
     gap: AppTheme.spacing.xs,
